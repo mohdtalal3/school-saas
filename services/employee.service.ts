@@ -54,7 +54,24 @@ export async function getEmployees(
   const { data, error, count } = await query;
 
   if (error) throw new Error(`Failed to fetch employees: ${error.message}`);
-  return { data: (data ?? []) as unknown as Employee[], total: count ?? 0 };
+
+  const { count: activeCount } = await supabase
+    .from("employees")
+    .select("*", { count: "exact", head: true })
+    .eq("school_id", schoolId)
+    .eq("is_active", true);
+
+  const { count: inactiveCount } = await supabase
+    .from("employees")
+    .select("*", { count: "exact", head: true })
+    .eq("school_id", schoolId)
+    .eq("is_active", false);
+
+  return {
+    data: (data ?? []) as unknown as Employee[],
+    total: count ?? 0,
+    counts: { active: activeCount ?? 0, inactive: inactiveCount ?? 0, total: (activeCount ?? 0) + (inactiveCount ?? 0) },
+  };
 }
 
 export async function getEmployeeById(

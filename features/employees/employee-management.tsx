@@ -62,7 +62,7 @@ import { getInitials } from "@/lib/utils";
 async function fetchEmployees(
   schoolId: string,
   params: { page: number; limit: number; search: string; active?: boolean | "all" }
-): Promise<{ data: Employee[]; total: number }> {
+): Promise<{ data: Employee[]; total: number; counts?: { active: number; inactive: number; total: number } }> {
   const qs = new URLSearchParams({
     page: String(params.page),
     limit: String(params.limit),
@@ -438,6 +438,7 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
   });
   const employees = data?.data ?? [];
   const totalEmployees = data?.total ?? 0;
+  const counts = data?.counts;
 
   // ── Mutations ──────────────────────────────────────────────────────────────
   const createMutation = useMutation({
@@ -749,9 +750,19 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
                 <CardTitle className="flex items-center gap-2 text-base font-medium">
                   <Users className="h-4 w-4 text-muted-foreground" />
                   Staff Directory
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                    {totalEmployees}
-                  </span>
+                  {counts && (
+                    <span className="flex items-center gap-1.5">
+                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600">
+                        {counts.active} Active
+                      </span>
+                      <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600">
+                        {counts.inactive} Inactive
+                      </span>
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                        {counts.total} Total
+                      </span>
+                    </span>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>

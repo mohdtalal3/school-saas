@@ -20,9 +20,16 @@ function buildStudent(data: Record<string, unknown>): Student {
 
 // ── Read all ────────────────────────────────────────────────────────────────────
 
+export interface StatusCounts {
+  active: number;
+  inactive: number;
+  total: number;
+}
+
 export interface PaginatedResult<T> {
   data: T[];
   total: number;
+  counts?: StatusCounts;
 }
 
 export interface PaginationParams {
@@ -85,7 +92,23 @@ export async function getStudents(
     };
   });
 
-  return { data: students, total: count ?? 0 };
+  const { count: activeCount } = await supabase
+    .from("students")
+    .select("*", { count: "exact", head: true })
+    .eq("school_id", schoolId)
+    .eq("is_active", true);
+
+  const { count: inactiveCount } = await supabase
+    .from("students")
+    .select("*", { count: "exact", head: true })
+    .eq("school_id", schoolId)
+    .eq("is_active", false);
+
+  return {
+    data: students,
+    total: count ?? 0,
+    counts: { active: activeCount ?? 0, inactive: inactiveCount ?? 0, total: (activeCount ?? 0) + (inactiveCount ?? 0) },
+  };
 }
 
 // ── Read one ────────────────────────────────────────────────────────────────────
