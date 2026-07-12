@@ -52,15 +52,9 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
     pathname?.startsWith("/school/settings") ?? false
   );
 
-  // Keep the Employees group open by default when you're already inside it.
-  const [employeesOpen, setEmployeesOpen] = React.useState(
-    pathname?.startsWith("/school/employees") ?? false
-  );
-
   React.useEffect(() => {
     // Auto-expand if you navigate into a settings sub-page elsewhere.
     if (pathname?.startsWith("/school/settings")) setSettingsOpen(true);
-    if (pathname?.startsWith("/school/employees")) setEmployeesOpen(true);
   }, [pathname]);
 
   const settingsActive = pathname?.startsWith("/school/settings") ?? false;
@@ -137,61 +131,20 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
             );
           })}
 
-          {/* Employees — collapsible group */}
-          <button
-            type="button"
-            onClick={() => setEmployeesOpen((v) => !v)}
-            aria-expanded={employeesOpen}
-            aria-controls="employees-group"
+          {/* Employees — single button (all employee management consolidated on one page) */}
+          <Link
+            href="/school/employees"
+            onClick={onClose}
             className={cn(
-              "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+              "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
               employeesActive
                 ? "bg-sidebar-accent text-white"
                 : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white"
             )}
           >
             <Users className="h-4 w-4" />
-            <span className="flex-1 text-left">Employees</span>
-            <ChevronDown
-              className={cn(
-                "h-4 w-4 transition-transform duration-200",
-                employeesOpen ? "rotate-180" : "rotate-0"
-              )}
-            />
-          </button>
-
-          <AnimatePresence initial={false}>
-            {employeesOpen && (
-              <motion.div
-                id="employees-group"
-                key="employees-group"
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2, ease: "easeInOut" }}
-                className="overflow-hidden"
-              >
-                <div className="ml-2 mt-1 space-y-1 border-l border-sidebar-border/60 pl-2 pb-1">
-                  <Link
-                    href="/school/employees"
-                    onClick={onClose}
-                    className={cn(
-                      "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                      pathname === "/school/employees"
-                        ? "bg-sidebar-accent text-white"
-                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white"
-                    )}
-                  >
-                    <Users className="h-4 w-4" />
-                    <span className="flex-1">All Employees</span>
-                    {pathname === "/school/employees" && (
-                      <ChevronRight className="h-4 w-4" />
-                    )}
-                  </Link>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+            <span className="flex-1">Employees</span>
+          </Link>
 
           {/* General Settings — collapsible group */}
           <p className="px-3 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">

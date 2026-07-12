@@ -22,6 +22,7 @@ import {
   CalendarDays,
   GraduationCap,
   Paperclip,
+  CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,7 @@ import { EmployeeViewDialog } from "./employee-view-dialog";
 import { ManageLoginTab } from "./manage-login-tab";
 import { JobOfferTab } from "./job-offer-tab";
 import { AttachmentsTab } from "./attachments-tab";
+import { IdCardsTab } from "./id-cards-tab";
 import type { Employee } from "@/types/school.types";
 import { getInitials } from "@/lib/utils";
 
@@ -390,7 +392,7 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
   const { toast } = useToast();
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [tab, setTab] = React.useState<"all" | "login" | "offer" | "attachments">("all");
+  const [tab, setTab] = React.useState<"all" | "login" | "offer" | "attachments" | "idcards">("all");
   const [search, setSearch] = React.useState("");
   const [mode, setMode] = React.useState<DialogMode | null>(null);
   const [selected, setSelected] = React.useState<Employee | null>(null);
@@ -651,7 +653,7 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
 
         <Tabs
           value={tab}
-          onValueChange={(v) => setTab(v as "all" | "login" | "offer" | "attachments")}
+          onValueChange={(v) => setTab(v as "all" | "login" | "offer" | "attachments" | "idcards")}
           className="w-full"
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -674,6 +676,10 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
               <TabsTrigger value="attachments" className="gap-2">
                 <Paperclip className="h-3.5 w-3.5" />
                 Attachments
+              </TabsTrigger>
+              <TabsTrigger value="idcards" className="gap-2">
+                <CreditCard className="h-3.5 w-3.5" />
+                ID Cards
               </TabsTrigger>
             </TabsList>
 
@@ -782,6 +788,11 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
           {/* ── Attachments tab ── */}
           <TabsContent value="attachments" className="mt-4">
             <AttachmentsTab schoolId={schoolId} />
+          </TabsContent>
+
+          {/* ── ID Cards tab ── */}
+          <TabsContent value="idcards" className="mt-4">
+            <IdCardsTab schoolId={schoolId} />
           </TabsContent>
         </Tabs>
       </motion.div>
