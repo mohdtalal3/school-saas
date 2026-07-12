@@ -45,8 +45,10 @@ export async function GET(
     const limit = parseInt(url.searchParams.get("limit") ?? "25", 10);
     const search = url.searchParams.get("search") ?? undefined;
     const classId = url.searchParams.get("classId") ?? undefined;
+    const activeParam = url.searchParams.get("active") ?? "true";
+    const active = activeParam === "all" ? "all" : activeParam === "true";
 
-    const result = await getStudents(schoolId, { page, limit, search, classId });
+    const result = await getStudents(schoolId, { page, limit, search, classId, active });
     return NextResponse.json(success(result));
   } catch (e) {
     return NextResponse.json(

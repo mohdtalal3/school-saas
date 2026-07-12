@@ -32,6 +32,7 @@ import {
   Cake,
   IdCard,
   Users as UsersIcon,
+  Table,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +66,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SearchPicker } from "@/components/ui/search-picker";
 import { useToast } from "@/components/ui/toast";
 import { StudentForm } from "./student-form";
+import { StudentDirectoryTab } from "./student-directory-tab";
 import type {
   Student,
   StudentWithClass,
@@ -77,12 +79,13 @@ import { getInitials } from "@/lib/utils";
 
 async function fetchStudents(
   schoolId: string,
-  params: { page: number; limit: number; search: string; classId: string }
+  params: { page: number; limit: number; search: string; classId: string; active?: boolean | "all" }
 ): Promise<{ data: StudentWithClass[]; total: number }> {
   const qs = new URLSearchParams({
     page: String(params.page),
     limit: String(params.limit),
   });
+  if (params.active !== undefined) qs.set("active", params.active === "all" ? "all" : String(params.active));
   if (params.search) qs.set("search", params.search);
   if (params.classId && params.classId !== "all") qs.set("classId", params.classId);
   const res = await fetch(`/api/students/${schoolId}?${qs}`);
@@ -684,6 +687,7 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
   const [selected, setSelected] = React.useState<Student | null>(null);
   const [viewStudent, setViewStudent] = React.useState<StudentWithClass | null>(null);
   const [classFilter, setClassFilter] = React.useState<string>("all");
+  const [studentActiveFilter, setStudentActiveFilter] = React.useState<"active" | "inactive" | "all">("active");
   const { page, pageSize, search, setPage, setSearch, handlePageSizeChange } = useServerPagination();
 
   // Debounce search
@@ -695,8 +699,14 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const { data, isLoading } = useQuery({
-    queryKey: ["students", schoolId, page, pageSize, debouncedSearch, classFilter],
-    queryFn: () => fetchStudents(schoolId, { page, limit: pageSize, search: debouncedSearch, classId: classFilter }),
+    queryKey: ["students", schoolId, page, pageSize, debouncedSearch, classFilter, studentActiveFilter],
+    queryFn: () => fetchStudents(schoolId, {
+      page,
+      limit: pageSize,
+      search: debouncedSearch,
+      classId: classFilter,
+      active: studentActiveFilter === "all" ? "all" : studentActiveFilter === "active",
+    }),
   });
   const students = data?.data ?? [];
   const totalStudents = data?.total ?? 0;
@@ -849,6 +859,10 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
               <Users className="h-3.5 w-3.5" />
               All Students
             </TabsTrigger>
+            <TabsTrigger value="list" className="gap-1.5">
+              <Table className="h-3.5 w-3.5" />
+              Basic List
+            </TabsTrigger>
             <TabsTrigger value="attachments" className="gap-1.5">
               <Paperclip className="h-3.5 w-3.5" />
               Attachments
@@ -875,6 +889,23 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
                   </div>
 
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    {/* Active filter */}
+                    <div className="inline-flex rounded-md border bg-muted/40 p-0.5">
+                      {(["active", "inactive", "all"] as const).map((f) => (
+                        <button
+                          key={f}
+                          onClick={() => { setStudentActiveFilter(f); setPage(1); }}
+                          className={`rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
+                            studentActiveFilter === f
+                              ? "bg-background text-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {f === "all" ? "All" : f}
+                        </button>
+                      ))}
+                    </div>
+
                     {/* Class filter */}
                     <Select value={classFilter} onValueChange={setClassFilter}>
                       <SelectTrigger className="w-full sm:w-44">
@@ -949,6 +980,11 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
                 )}
               </>
             )}
+          </TabsContent>
+
+          {/* Basic List tab */}
+          <TabsContent value="list" className="mt-4">
+            <StudentDirectoryTab schoolId={schoolId} />
           </TabsContent>
 
           {/* Attachments tab */}

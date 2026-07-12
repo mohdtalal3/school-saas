@@ -30,6 +30,7 @@ export interface PaginationParams {
   limit?: number;
   search?: string;
   classId?: string;
+  active?: boolean | "all";
 }
 
 export async function getStudents(
@@ -48,8 +49,11 @@ export async function getStudents(
       classes!left ( id, name, fee )`,
       { count: "exact" }
     )
-    .eq("school_id", schoolId)
-    .eq("is_active", true);
+    .eq("school_id", schoolId);
+
+  if (params.active !== "all") {
+    query = query.eq("is_active", params.active ?? true);
+  }
 
   if (params.classId) {
     query = query.eq("class_id", params.classId);
@@ -213,6 +217,27 @@ export async function deleteStudent(
     .eq("school_id", schoolId);
 
   if (error) throw new Error(`Failed to delete student: ${error.message}`);
+}
+
+// ── Toggle active ──────────────────────────────────────────────────────────────
+
+export async function toggleStudentActive(
+  studentId: string,
+  schoolId: string,
+  isActive: boolean
+): Promise<Student> {
+  const supabase: SupabaseClient = createSupabaseService();
+  const { data, error } = await supabase
+    .from("students")
+    .update({ is_active: isActive } as never)
+    .eq("id", studentId)
+    .eq("school_id", schoolId)
+    .select()
+    .single();
+
+  if (error) throw new Error(`Failed to update student: ${error.message}`);
+  if (!data) throw new NotFoundError("Student not found");
+  return buildStudent(data as Record<string, unknown>);
 }
 
 // ── Photo upload ───────────────────────────────────────────────────────────────

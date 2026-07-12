@@ -34,8 +34,11 @@ export async function getEmployees(
   let query = supabase
     .from("employees")
     .select("*", { count: "exact" })
-    .eq("school_id", schoolId)
-    .eq("is_active", true);
+    .eq("school_id", schoolId);
+
+  if (params.active !== "all") {
+    query = query.eq("is_active", params.active ?? true);
+  }
 
   if (params.search?.trim()) {
     const q = params.search.trim();
@@ -193,6 +196,27 @@ export async function deleteEmployee(
     .eq("school_id", schoolId);
 
   if (error) throw new Error(`Failed to delete employee: ${error.message}`);
+}
+
+// ── Toggle active ──────────────────────────────────────────────────────────────
+
+export async function toggleEmployeeActive(
+  employeeId: string,
+  schoolId: string,
+  isActive: boolean
+): Promise<Employee> {
+  const supabase: SupabaseClient = createSupabaseService();
+  const { data, error } = await supabase
+    .from("employees")
+    .update({ is_active: isActive } as never)
+    .eq("id", employeeId)
+    .eq("school_id", schoolId)
+    .select()
+    .single();
+
+  if (error) throw new Error(`Failed to update employee: ${error.message}`);
+  if (!data) throw new NotFoundError("Employee not found");
+  return buildEmployee(data as Record<string, unknown>);
 }
 
 // ── Attachments ────────────────────────────────────────────────────────────────

@@ -39,8 +39,10 @@ export async function GET(
     const page = parseInt(url.searchParams.get("page") ?? "1", 10);
     const limit = parseInt(url.searchParams.get("limit") ?? "25", 10);
     const search = url.searchParams.get("search") ?? undefined;
+    const activeParam = url.searchParams.get("active") ?? "true";
+    const active = activeParam === "all" ? "all" : activeParam === "true";
 
-    const result = await getEmployees(schoolId, { page, limit, search });
+    const result = await getEmployees(schoolId, { page, limit, search, active });
     return NextResponse.json(success(result));
   } catch (e) {
     return NextResponse.json(

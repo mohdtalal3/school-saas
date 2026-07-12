@@ -23,6 +23,7 @@ import {
   GraduationCap,
   Paperclip,
   CreditCard,
+  Table,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +52,7 @@ import { ManageLoginTab } from "./manage-login-tab";
 import { JobOfferTab } from "./job-offer-tab";
 import { AttachmentsTab } from "./attachments-tab";
 import { IdCardsTab } from "./id-cards-tab";
+import { EmployeeDirectoryTab } from "./employee-directory-tab";
 import type { Employee } from "@/types/school.types";
 import { getInitials } from "@/lib/utils";
 
@@ -58,13 +60,14 @@ import { getInitials } from "@/lib/utils";
 
 async function fetchEmployees(
   schoolId: string,
-  params: { page: number; limit: number; search: string }
+  params: { page: number; limit: number; search: string; active?: boolean | "all" }
 ): Promise<{ data: Employee[]; total: number }> {
   const qs = new URLSearchParams({
     page: String(params.page),
     limit: String(params.limit),
   });
   if (params.search) qs.set("search", params.search);
+  if (params.active !== undefined) qs.set("active", params.active === "all" ? "all" : String(params.active));
   const res = await fetch(`/api/employees/${schoolId}?${qs}`);
   const json = await res.json();
   if (!res.ok || !json.success) throw new Error(json.error || "Failed to load");
@@ -402,7 +405,7 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
   const { toast } = useToast();
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [tab, setTab] = React.useState<"all" | "login" | "offer" | "attachments" | "idcards">("all");
+  const [tab, setTab] = React.useState<"all" | "list" | "login" | "offer" | "attachments" | "idcards">("all");
   const { page, pageSize, search, setPage, setSearch, handlePageSizeChange } = useServerPagination();
   const [mode, setMode] = React.useState<DialogMode | null>(null);
   const [selected, setSelected] = React.useState<Employee | null>(null);
@@ -413,6 +416,8 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
   } | null>(null);
   const [showCredentials, setShowCredentials] = React.useState(false);
 
+  const [empActiveFilter, setEmpActiveFilter] = React.useState<"active" | "inactive" | "all">("active");
+
   // Debounce search
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
   React.useEffect(() => {
@@ -422,8 +427,13 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const { data, isLoading } = useQuery({
-    queryKey: ["employees", schoolId, page, pageSize, debouncedSearch],
-    queryFn: () => fetchEmployees(schoolId, { page, limit: pageSize, search: debouncedSearch }),
+    queryKey: ["employees", schoolId, page, pageSize, debouncedSearch, empActiveFilter],
+    queryFn: () => fetchEmployees(schoolId, {
+      page,
+      limit: pageSize,
+      search: debouncedSearch,
+      active: empActiveFilter === "all" ? "all" : empActiveFilter === "active",
+    }),
   });
   const employees = data?.data ?? [];
   const totalEmployees = data?.total ?? 0;
@@ -669,6 +679,10 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
                   {totalEmployees}
                 </span>
               </TabsTrigger>
+              <TabsTrigger value="list" className="gap-2">
+                <Table className="h-3.5 w-3.5" />
+                Basic List
+              </TabsTrigger>
               <TabsTrigger value="login" className="gap-2">
                 <KeyRound className="h-3.5 w-3.5" />
                 Manage Login
@@ -688,22 +702,39 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
             </TabsList>
 
             {tab === "all" && (
-              <div className="relative w-full sm:w-72">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search name, role, code, phone, CNIC..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 pr-9"
-                />
-                {search && (
-                  <button
-                    onClick={() => setSearch("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
+              <div className="flex items-center gap-2">
+                <div className="inline-flex rounded-md border bg-muted/40 p-0.5">
+                  {(["active", "inactive", "all"] as const).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => { setEmpActiveFilter(f); setPage(1); }}
+                      className={`rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
+                        empActiveFilter === f
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {f === "all" ? "All" : f}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative w-full sm:w-64">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search name, role, code, phone, CNIC..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 pr-8"
+                  />
+                  {search && (
+                    <button
+                      onClick={() => setSearch("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -777,6 +808,11 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ── Basic List tab ── */}
+          <TabsContent value="list" className="mt-4">
+            <EmployeeDirectoryTab schoolId={schoolId} />
           </TabsContent>
 
           {/* ── Manage Login tab ── */}
