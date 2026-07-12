@@ -37,6 +37,7 @@ A single Next.js 15 (App Router) application that hosts:
 │                │   school.service.ts          │          │
 │                │   settings.service.ts        │          │
 │                │   auth.service.ts            │          │
+│                │   employee.service.ts        │          │
 │                └──────────────┬───────────────┘          │
 └───────────────────────────────┼──────────────────────────┘
                                 │  Supabase JS SDK
@@ -45,8 +46,10 @@ A single Next.js 15 (App Router) application that hosts:
                   │   Supabase (Postgres)      │
                   │   - schools                │
                   │   - school_admins          │
+                  │   - employees              │
+                  │   - employee_attachments   │
                   │   - RLS enabled            │
-                  │   - Storage (logos)        │
+                  │   - Storage (logos, photos) │
                   └────────────────────────────┘
 ```
 
@@ -73,19 +76,31 @@ A single Next.js 15 (App Router) application that hosts:
 - Examples:
   - `schoolService.create({ name, adminEmail, adminPassword })`
   - `settingsService.updateInstituteProfile(schoolId, payload)`
+  - `employeeService.getEmployees(schoolId)` / `createEmployee` / `updateEmployee` / `deleteEmployee`
 - Errors thrown as `AppError` subclasses; the API layer converts them to JSON responses.
 
 ### 4. Data Layer (`lib/supabase`)
 
 - `supabaseServer()` — for use inside RSC and route handlers (cookie-based session).
 - `supabaseBrowser()` — for client components (reads anon key).
-- `supabaseService()` — service-role client, used only inside `services/` for trusted ops (e.g., creating schools + admins atomically).
+- `supabaseService()` — service-role client, used only inside `services/` for trusted ops (e.g., creating schools + admins atomically, employee CRUD, file uploads).
 
-### 5. Database (Supabase Postgres)
+### 5. PDF Generation Layer
 
-- All tables include `school_id` where tenant-scoped.
-- Row Level Security (RLS) on every table.
-- Service-role key bypasses RLS — used by migration runner and trusted service code only.
+Two distinct PDF generation approaches are used:
+
+#### Puppeteer (ID Cards)
+- **Route:** `app/api/employees/id-cards/pdf/route.ts` — server-side, launches headless Chrome
+- **Template:** `features/employees/id-card-html.ts` — builds full HTML string with inline CSS
+- **Flow:** API route fetches employees + school → builds HTML → `page.setContent()` → `page.pdf()` → returns PDF buffer
+- **Why Puppeteer:** Supports complex CSS (gradients, box-shadows, web fonts, z-index layering) needed for the premium ID card design
+- **Card size:** CR80 portrait (53.98mm × 85.6mm), 6 cards per A4 page
+
+#### `@react-pdf/renderer` (Job Offer Letters)
+- **Template:** `features/employees/job-offer-letter-pdf.tsx` — React component tree → PDF
+- **Viewer:** `features/employees/job-offer-pdf-viewer.tsx` — client-side `PDFViewer` wrapper
+- **Why react-pdf:** Better for multi-page, text-heavy documents with automatic pagination
+- `next.config.js` has `transpilePackages: ["@react-pdf/renderer"]`
 
 ## Multi-Tenant Model
 
@@ -121,8 +136,23 @@ Single database, shared schema, **school_id** discriminator everywhere.
 
 - `/app` — pages + API only.
 - `/components` — presentational, no data fetching.
-- `/features` — feature-specific compositions (forms, dialogs) that may include client-side data hooks.
+- `/features` — feature-specific compositions (forms, dialogs, PDF templates) that may include client-side data hooks.
 - `/services` — business logic; no JSX.
 - `/lib` — utilities; no DB calls except in `lib/supabase`.
 - `/hooks` — React hooks.
 - `/types` — TypeScript types only.
+
+### Key feature directories (`features/employees/`)
+
+| File | Purpose |
+| --- | --- |
+| `employee-form.tsx` | Add/edit employee form (RHF + Zod) |
+| `employee-list.tsx` | Table with search, filter, pagination |
+| `employee-detail.tsx` | Detail page with tabs (profile, attachments) |
+| `employee-attachments.tsx` | Attachment upload/download/delete |
+| `id-cards-client.tsx` | ID card UI — employee selection, theme picker, iframe preview, download |
+| `id-card-types.ts` | `IdCardTheme` interface + `DEFAULT_ID_CARD_THEME` |
+| `id-card-html.ts` | HTML template for Puppeteer PDF (CR80 portrait, premium design) |
+| `job-offer-letter-pdf.tsx` | `@react-pdf/renderer` Job Offer Letter document |
+| `job-offer-pdf-viewer.tsx` | Client-side `PDFViewer` wrapper for offer letter |
+| `job-offer-tab.tsx` | Tab component to launch offer letter viewer |

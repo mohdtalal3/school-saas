@@ -6,11 +6,9 @@ import {
   Search,
   X,
   Printer,
-  Loader2,
+  Download,
   Palette,
   Users,
-  Square,
-  RectangleHorizontal,
   Check,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -18,8 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/toast";
-import { IdCardPDFViewer } from "./id-card-pdf-viewer";
-import type { IdCardTheme, IdCardOrientation } from "./id-card-pdf";
+import type { IdCardTheme } from "./id-card-types";
 import type { Employee, School } from "@/types/school.types";
 import { getInitials } from "@/lib/utils";
 
@@ -27,34 +24,33 @@ interface Props {
   employees: Employee[]; // currently-selected employees
   allEmployees: Employee[];
   school: School;
-  initialOrientation: IdCardOrientation;
   initialTheme: IdCardTheme;
 }
 
 const PRESET_THEMES: { label: string; theme: IdCardTheme }[] = [
   {
-    label: "Classic Navy",
-    theme: { textColor: "#1f2937", accentColor: "#0b1d39", bgColor: "#ffffff" },
+    label: "Navy & Gold",
+    theme: { textColor: "#1f2937", accentColor: "#243c8b", goldColor: "#c89a2b", bgColor: "#ffffff" },
   },
   {
     label: "Royal Blue",
-    theme: { textColor: "#1e293b", accentColor: "#1d4ed8", bgColor: "#ffffff" },
+    theme: { textColor: "#1e293b", accentColor: "#1d4ed8", goldColor: "#f59e0b", bgColor: "#ffffff" },
   },
   {
     label: "Forest",
-    theme: { textColor: "#1f2937", accentColor: "#15803d", bgColor: "#ffffff" },
+    theme: { textColor: "#1f2937", accentColor: "#15803d", goldColor: "#ca8a04", bgColor: "#ffffff" },
   },
   {
     label: "Crimson",
-    theme: { textColor: "#1f2937", accentColor: "#b91c1c", bgColor: "#ffffff" },
+    theme: { textColor: "#1f2937", accentColor: "#b91c1c", goldColor: "#d97706", bgColor: "#ffffff" },
   },
   {
-    label: "Gold",
-    theme: { textColor: "#1f2937", accentColor: "#c9a253", bgColor: "#ffffff" },
+    label: "Emerald & Gold",
+    theme: { textColor: "#1f2937", accentColor: "#065f46", goldColor: "#c9a253", bgColor: "#ffffff" },
   },
   {
-    label: "Dark Mode",
-    theme: { textColor: "#f9fafb", accentColor: "#3b82f6", bgColor: "#111827" },
+    label: "Charcoal",
+    theme: { textColor: "#1f2937", accentColor: "#1f2937", goldColor: "#c89a2b", bgColor: "#ffffff" },
   },
 ];
 
@@ -62,7 +58,6 @@ export function IdCardsClient({
   employees: initialEmployees,
   allEmployees,
   school,
-  initialOrientation,
   initialTheme,
 }: Props) {
   const router = useRouter();
@@ -75,8 +70,6 @@ export function IdCardsClient({
   const [selectedIds, setSelectedIds] =
     React.useState<Set<string>>(new Set(initialEmployees.map((e) => e.id)));
 
-  const [orientation, setOrientation] =
-    React.useState<IdCardOrientation>(initialOrientation);
   const [theme, setTheme] = React.useState<IdCardTheme>(initialTheme);
 
   const [search, setSearch] = React.useState("");
@@ -118,6 +111,21 @@ export function IdCardsClient({
     setSelectedIds(new Set());
   }
 
+  const pdfQuery = React.useMemo(() => {
+    const params = new URLSearchParams();
+    if (mode === "select") {
+      params.set("ids", employeesToRender.map((e) => e.id).join(","));
+    }
+    params.set("textColor", theme.textColor);
+    params.set("accentColor", theme.accentColor);
+    params.set("goldColor", theme.goldColor);
+    params.set("bgColor", theme.bgColor);
+    return params.toString();
+  }, [mode, employeesToRender, theme]);
+
+  const pdfPreviewUrl = `/api/employees/id-cards/pdf?${pdfQuery}`;
+  const pdfDownloadUrl = `${pdfPreviewUrl}&download=1`;
+
   function handleGenerate() {
     if (employeesToRender.length === 0) {
       toast({
@@ -151,25 +159,35 @@ export function IdCardsClient({
         <div className="flex items-center justify-between border-b border-white/10 bg-[#3f4347] px-4 py-2 text-white">
           <div className="text-sm">
             ID Cards — {employeesToRender.length} employee
-            {employeesToRender.length === 1 ? "" : "s"} •{" "}
-            {orientation === "portrait" ? "Portrait" : "Landscape"} A4
+            {employeesToRender.length === 1 ? "" : "s"} • Portrait CR80, A4 sheet
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={closePdf}
-            className="bg-white text-black hover:bg-white/90"
-          >
-            <X className="mr-1 h-3.5 w-3.5" />
-            Back to options
-          </Button>
+          <div className="flex gap-2">
+            <a href={pdfDownloadUrl} target="_blank" rel="noreferrer">
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-white text-black hover:bg-white/90"
+              >
+                <Download className="mr-1 h-3.5 w-3.5" />
+                Download
+              </Button>
+            </a>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={closePdf}
+              className="bg-white text-black hover:bg-white/90"
+            >
+              <X className="mr-1 h-3.5 w-3.5" />
+              Back to options
+            </Button>
+          </div>
         </div>
-        <div className="flex-1">
-          <IdCardPDFViewer
-            employees={employeesToRender}
-            school={school}
-            orientation={orientation}
-            theme={theme}
+        <div className="flex-1 bg-[#525659]">
+          <iframe
+            src={pdfPreviewUrl}
+            title="ID Cards PDF preview"
+            className="h-full w-full border-0"
           />
         </div>
       </div>
@@ -187,7 +205,7 @@ export function IdCardsClient({
             Employee ID Cards
           </h1>
           <p className="text-sm text-muted-foreground">
-            Generate printable ID cards — 6 per A4 sheet, one-sided.
+            Generate printable ID cards — CR80 portrait, 9 per A4 sheet.
           </p>
         </div>
         <div className="flex gap-2">
@@ -338,52 +356,8 @@ export function IdCardsClient({
           </CardContent>
         </Card>
 
-        {/* Right: orientation + theme */}
+        {/* Right: theme */}
         <div className="space-y-4">
-          <Card>
-            <CardContent className="space-y-3 p-4">
-              <div>
-                <p className="mb-2 flex items-center gap-1.5 text-sm font-medium">
-                  <RectangleHorizontal className="h-4 w-4" />
-                  Orientation
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setOrientation("portrait")}
-                    className={`flex flex-col items-center gap-1.5 rounded-md border p-3 transition-colors ${
-                      orientation === "portrait"
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-muted-foreground/30 hover:border-muted-foreground/50"
-                    }`}
-                  >
-                    <RectangleHorizontal
-                      className="h-7 w-5"
-                      style={{ transform: "rotate(90deg)" }}
-                    />
-                    <span className="text-xs font-medium">Vertical</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      2 cols × 3 rows
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setOrientation("landscape")}
-                    className={`flex flex-col items-center gap-1.5 rounded-md border p-3 transition-colors ${
-                      orientation === "landscape"
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-muted-foreground/30 hover:border-muted-foreground/50"
-                    }`}
-                  >
-                    <RectangleHorizontal className="h-5 w-7" />
-                    <span className="text-xs font-medium">Horizontal</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      2 cols × 3 rows
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           <Card>
             <CardContent className="space-y-3 p-4">
               <p className="flex items-center gap-1.5 text-sm font-medium">
@@ -397,6 +371,7 @@ export function IdCardsClient({
                   const isActive =
                     p.theme.textColor === theme.textColor &&
                     p.theme.accentColor === theme.accentColor &&
+                    p.theme.goldColor === theme.goldColor &&
                     p.theme.bgColor === theme.bgColor;
                   return (
                     <button
@@ -413,7 +388,8 @@ export function IdCardsClient({
                         className="h-6 w-full rounded-sm border"
                         style={{
                           backgroundColor: p.theme.bgColor,
-                          borderColor: p.theme.accentColor,
+                          borderColor: p.theme.goldColor,
+                          borderTopColor: p.theme.accentColor,
                           borderTopWidth: 4,
                         }}
                       />
@@ -439,6 +415,11 @@ export function IdCardsClient({
                   label="Accent color"
                   value={theme.accentColor}
                   onChange={(v) => setTheme((t) => ({ ...t, accentColor: v }))}
+                />
+                <ColorRow
+                  label="Gold accent"
+                  value={theme.goldColor}
+                  onChange={(v) => setTheme((t) => ({ ...t, goldColor: v }))}
                 />
                 <ColorRow
                   label="Background"

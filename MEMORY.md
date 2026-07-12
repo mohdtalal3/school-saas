@@ -11,13 +11,16 @@ A modern, multi-tenant **School ERP SaaS** platform inspired by the workflow and
 
 The product is being built for production use, with the goal of supporting thousands of schools with clean architecture, scalability, and easy maintainability.
 
-### Current Scope (Phase 1)
+### Current Scope (Phase 2 — in progress)
 
 - Master Login (env-driven, used only to create schools) — **hidden endpoint**, not linked from the app
 - Master Dashboard with School Creation form
 - School Admin Login page (premium two-panel UI, `/school-login`)
 - Admin Portal for schools (Dashboard + General Settings)
 - Multi-tenant architecture with full data isolation
+- **Employee Management** — full CRUD, list with search/filter, detail page, photo upload, attachments
+- **ID Card Generation** — Puppeteer-based PDF, CR80 portrait, premium navy/gold design, theme customization
+- **Job Offer Letter** — `@react-pdf/renderer` PDF, premium navy/gold design matching ID cards, logo watermark
 - Subscriptions/billing: **not yet implemented**
 
 ### Out of Scope (Phase 1)
@@ -77,7 +80,18 @@ school/
 │   ├── master/                   # Master login + dashboard
 │   ├── schools/                  # School CRUD
 │   ├── settings/                 # Settings features
-│   └── auth/                     # Auth helpers
+│   ├── auth/                     # Auth helpers + premium login UI
+│   └── employees/                # Employee CRUD, ID cards, offer letters
+│       ├── employee-form.tsx
+│       ├── employee-list.tsx
+│       ├── employee-detail.tsx
+│       ├── employee-attachments.tsx
+│       ├── id-cards-client.tsx   # ID card UI (selection, theme, preview)
+│       ├── id-card-types.ts      # IdCardTheme interface + defaults
+│       ├── id-card-html.ts       # Puppeteer HTML template (CR80 portrait)
+│       ├── job-offer-letter-pdf.tsx   # @react-pdf/renderer offer letter
+│       ├── job-offer-pdf-viewer.tsx   # Client-side PDFViewer wrapper
+│       └── job-offer-tab.tsx
 │
 ├── lib/                          # Generic utilities
 │   ├── supabase/                 # Supabase clients (server, client, service)
@@ -88,7 +102,8 @@ school/
 ├── services/                     # Reusable business logic services
 │   ├── school.service.ts
 │   ├── settings.service.ts
-│   └── auth.service.ts
+│   ├── auth.service.ts
+│   └── employee.service.ts       # Employee CRUD operations
 │
 ├── hooks/                        # Custom React hooks
 │   ├── use-session.ts
@@ -138,6 +153,8 @@ school/
 | Storage | Supabase Storage |
 | ORM | **None** (raw SQL migrations only, no Prisma) |
 | Auth | JWT in HTTP-only cookies (custom) |
+| PDF (ID cards) | Puppeteer (headless Chrome → HTML/CSS → PDF) |
+| PDF (offer letters) | `@react-pdf/renderer` (React → PDF) |
 
 ### Why these choices?
 
@@ -156,9 +173,15 @@ school/
   - `name`, `tagline`, `phone`, `email`, `website`, `address`, `country`
   - `logo_url`
   - `currency_symbol`, `currency_name`, `timezone`
+  - `employee_rules` (text, nullable) — used in job offer letters
+  - `student_rules` (text, nullable)
   - `created_at`, `updated_at`
 - `school_admins` — admins belonging to a school.
   - `id`, `school_id` (fk), `email`, `password_hash`, `name`, `is_active`, timestamps.
+- `employees` — school staff/teachers.
+  - `id`, `school_id` (fk), `employee_code`, `name`, `role`, `father_husband_name`, `gender`, `religion`, `cnic`, `date_of_birth`, `date_of_joining`, `salary`, `experience`, `phone`, `email`, `address`, `education`, `photo_url`, `login_username`, `password_hash`, `is_login_active`, `is_active`, timestamps.
+- `employee_attachments` — documents uploaded for employees.
+  - Stored in Supabase Storage bucket `employee-attachments`.
 
 ### Future-ready (schema reserved)
 
@@ -178,7 +201,7 @@ Full schema docs: `docs/database.md`.
 
 ---
 
-## 5. Completed Features (Phase 1)
+## 5. Completed Features
 
 | # | Feature | Status |
 | --- | --- | --- |
@@ -194,6 +217,14 @@ Full schema docs: `docs/database.md`.
 | 10 | Logout | ✅ |
 | 11 | School-scoped session with HTTP-only JWT cookie | ✅ |
 | 12 | Multi-tenant DB schema with RLS | ✅ |
+| 13 | Employee CRUD (create, list, detail, edit, delete) | ✅ |
+| 14 | Employee photo upload (Supabase Storage) | ✅ |
+| 15 | Employee attachments (upload, download, delete) | ✅ |
+| 16 | Employee active/inactive toggle | ✅ |
+| 17 | ID Card generation (Puppeteer, CR80 portrait, premium design) | ✅ |
+| 18 | ID Card theme customization (accent, gold, text, bg colors) | ✅ |
+| 19 | Job Offer Letter (`@react-pdf/renderer`, premium navy/gold design) | ✅ |
+| 20 | Job Offer Letter logo watermark (centered, fixed overlay) | ✅ |
 
 ---
 
@@ -201,11 +232,12 @@ Full schema docs: `docs/database.md`.
 
 | Phase | Module | Status |
 | --- | --- | --- |
-| 2 | School Admin login (email + password) | ⏳ |
+| 2 | Classes & Sections CRUD | ⏳ |
+| 2 | Students CRUD (with photo upload) | ⏳ |
+| 2 | Teachers / Parents CRUD | ⏳ |
 | 2 | Attendance module | ⏳ |
 | 2 | Exams & grading | ⏳ |
 | 2 | Fee management | ⏳ |
-| 2 | Students / Teachers / Parents CRUD | ⏳ |
 | 3 | Subscription plans & billing | ⏳ |
 | 3 | Teacher / Parent / Student portals | ⏳ |
 | 3 | Reports & analytics | ⏳ |
@@ -276,5 +308,29 @@ App: <http://localhost:3000>
 - `/` → redirects to `/school-login` (public entry)
 - `/school-login` → premium school admin login (Admin role functional; Employee/Student show "coming soon")
 - `/school` → Admin portal (guarded by `school_session` cookie)
+- `/school/employees` → Employee list (search, filter, pagination)
+- `/school/employees/[employeeId]` → Employee detail (profile, attachments)
+- `/school/employees/id-cards` → ID card generation (select employees, customize theme, preview, download)
+- `/school/employees/offer-letter/[employeeId]` → Job offer letter PDF viewer (full-screen)
 - `/master-login` → **hidden** master login (type URL directly; only used to create schools)
 - `/master` → Master dashboard (create / manage schools)
+
+---
+
+## 11. PDF Generation Details
+
+### ID Cards (Puppeteer)
+- **API Route:** `GET /api/employees/id-cards/pdf?ids=...&accentColor=...&goldColor=...&textColor=...&bgColor=...&download=1`
+- **Card size:** CR80 portrait (53.98mm × 85.6mm), 6 per A4 page
+- **Design:** Navy gradient header, gold underline, circular logo (z-index:10, overlapping header), STAFF ID gold pill badge (header right, vertically centered), school name + tagline, gold-ring circular photo, name, info rows (Employee ID, Designation, Phone, Joining Date), navy footer with school phone + address, logo watermark
+- **Theme defaults:** accent `#243c8b`, gold `#c89a2b`, text `#1f2937`, bg `#ffffff`
+- **Scaling:** `SCALE = CARD_W_MM / 340` — all px values from 340px reference design scaled to mm
+- **Client:** `<iframe>` for preview, download button with `&download=1`
+- **Removed:** `id-card-pdf.tsx`, `id-card-pdf-viewer.tsx` (old `@react-pdf/renderer` impl)
+
+### Job Offer Letter (`@react-pdf/renderer`)
+- **Files:** `job-offer-letter-pdf.tsx` (document), `job-offer-pdf-viewer.tsx` (client viewer)
+- **Color scheme:** Navy `#243c8b`, Gold `#c89a2b` (matches ID cards)
+- **Watermark:** School logo, centered (`top: 50%`, `marginTop: -150`), `fixed` prop, opacity 0.06
+- **Layout:** 2 pages — page 1: header + particulars grid, page 2: terms + signatures
+- **Features:** Top accent strip (navy + gold), header with logo + school info, meta band (reference + date), title block, body paragraphs, 2-column particulars grid, numbered terms list, rules & regulations, acceptance callout, signature blocks, bottom navy strip

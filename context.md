@@ -12,13 +12,16 @@ A production-grade, **multi-tenant School ERP SaaS** — one Postgres database s
 
 Single Next.js codebase hosts both the UI (App Router) and the backend (API Route Handlers). **No separate backend service, no Prisma** — raw SQL migrations + Supabase JS SDK only.
 
-### Current phase: Phase 1 (COMPLETE, minus DB migration verification)
+### Current phase: Phase 2 (IN PROGRESS — Employee module + PDF generation complete)
 
 Built and working:
 - Master login (env-credential, **hidden endpoint**) + Master dashboard + Create-school flow
 - Premium school-admin login UI (`/school-login`)
 - Admin portal: dashboard + sidebar/topbar layout + Institute Profile (with logo upload) + Account Settings (currency/timezone) + Logout
 - Multi-tenant DB schema + RLS + Storage bucket (migrations written)
+- **Employee management** — full CRUD, list with search/filter, detail page, photo upload, attachments, active/inactive toggle
+- **ID Card generation** — Puppeteer-based, CR80 portrait (53.98mm × 85.6mm), premium design with navy/gold theme, logo watermark, gold-ring photo, STAFF ID badge in header, 6 cards per A4 page, theme customization (accent/gold/text/bg colors), iframe preview + download
+- **Job Offer Letter** — `@react-pdf/renderer` based, premium template with navy/gold color scheme matching ID cards, school logo watermark (centered, fixed overlay), 2-page letter (particulars + terms), signature blocks, bottom accent strip
 
 Not yet built (Phase 2/3):
 - Teacher / Parent / Student portals (role cards exist in the login UI but show a "coming soon" toast)
@@ -44,9 +47,16 @@ Not yet built (Phase 2/3):
 | Auth | Custom JWT in HTTP-only cookies (`jose`) — **not** Supabase Auth |
 | Password hashing | bcryptjs (10 rounds) |
 | IDs / slugs | nanoid |
+| PDF generation (ID cards) | Puppeteer (headless Chrome → HTML/CSS → PDF) |
+| PDF generation (offer letters) | `@react-pdf/renderer` (React → PDF) |
 | Migrations | Raw SQL files in `supabase/migrations/`, run via `npm run db:migrate` (tsx) |
 
 Key dependencies are pinned in `package.json`. Scripts: `dev`, `build`, `start`, `lint`, `db:migrate`.
+
+**PDF generation note:** Two different PDF libraries are in use:
+- **Puppeteer** — used for ID cards (`app/api/employees/id-cards/pdf/route.ts`). Generates HTML server-side, renders via headless Chrome. Supports complex CSS (gradients, shadows, web fonts) that `@react-pdf/renderer` cannot.
+- **`@react-pdf/renderer`** — used for Job Offer Letters (`features/employees/job-offer-letter-pdf.tsx`). React-based PDF generation, good for multi-page text-heavy documents.
+- `next.config.js` has `transpilePackages: ["@react-pdf/renderer"]` for compatibility.
 
 Fonts: **Inter** loaded via `next/font/google` with CSS variable `--font-sans` (set in `app/layout.tsx`).
 
@@ -103,6 +113,10 @@ npm run dev          # http://localhost:3000
 | `/school/settings` | Redirects to `/school/settings/institute-profile` |
 | `/school/settings/institute-profile` | Institute profile form + logo upload |
 | `/school/settings/account-settings` | Currency + timezone |
+| `/school/employees` | Employee list with search, filter, pagination |
+| `/school/employees/[employeeId]` | Employee detail page (profile, attachments, actions) |
+| `/school/employees/id-cards` | ID card generation — select employees, customize theme, preview PDF in iframe, download |
+| `/school/employees/offer-letter/[employeeId]` | Job offer letter PDF viewer (full-screen) |
 | `/master-login` | **Hidden** — type URL directly. Master super-admin login (creates/manages schools). Not linked anywhere in the UI. |
 | `/master` | Master dashboard |
 | `/master/create-school` | Create school + first admin |
@@ -178,10 +192,17 @@ app/
     ├── auth/{master-login,school-login,logout}/route.ts
     ├── schools/route.ts                      GET list, POST create (master only)
     ├── schools/[schoolId]/route.ts          GET/PATCH/DELETE (master only)
-    └── settings/
-        ├── institute-profile/[schoolId]/route.ts       GET/PATCH (admin of that school)
-        ├── institute-profile/[schoolId]/logo/route.ts  POST FormData → Supabase Storage
-        └── account-settings/[schoolId]/route.ts         GET/PATCH currency/timezone
+    ├── settings/
+    │   ├── institute-profile/[schoolId]/route.ts       GET/PATCH (admin of that school)
+    │   ├── institute-profile/[schoolId]/logo/route.ts  POST FormData → Supabase Storage
+    │   └── account-settings/[schoolId]/route.ts         GET/PATCH currency/timezone
+    ├── employees/
+    │   ├── [schoolId]/route.ts                          GET list, POST create
+    │   ├── [schoolId]/[employeeId]/route.ts             GET, PATCH, DELETE
+    │   ├── [schoolId]/[employeeId]/photo/route.ts       POST FormData → Supabase Storage
+    │   ├── [schoolId]/[employeeId]/attachments/route.ts GET, POST attachments
+    │   ├── [schoolId]/[employeeId]/attachments/[attachmentId]/download/route.ts
+    │   └── id-cards/pdf/route.ts                        GET — Puppeteer PDF generation
 
 components/
 ├── providers.tsx            QueryClientProvider + ToastProvider (root)
@@ -198,7 +219,18 @@ features/
 │   └── school-login-form.tsx (OLD — superseded by login/, kept but unused)
 ├── admin/dashboard.tsx
 ├── master/{master-login-form,create-school-form,schools-list}.tsx
-└── settings/{institute-profile-form,account-settings-form}.tsx
+├── settings/{institute-profile-form,account-settings-form}.tsx
+├── employees/
+│   ├── employee-form.tsx          Add/edit employee form (RHF + Zod)
+│   ├── employee-list.tsx          Table with search, filter, pagination
+│   ├── employee-detail.tsx        Detail page with tabs (profile, attachments)
+│   ├── employee-attachments.tsx   Attachment upload/download/delete
+│   ├── id-cards-client.tsx        ID card UI — employee selection, theme picker, iframe preview, download
+│   ├── id-card-types.ts           IdCardTheme interface + DEFAULT_ID_CARD_THEME
+│   ├── id-card-html.ts            HTML template for Puppeteer PDF (CR80 portrait, premium design)
+│   ├── job-offer-letter-pdf.tsx   @react-pdf/renderer Job Offer Letter document
+│   ├── job-offer-pdf-viewer.tsx   Client-side PDFViewer wrapper for offer letter
+│   └── job-offer-tab.tsx          Tab component to launch offer letter viewer
 
 lib/
 ├── env.ts                    Zod-validated env access
@@ -210,10 +242,11 @@ lib/
 services/                     (business logic; no JSX)
 ├── auth.service.ts           verifyMasterCredentials, hashPassword, createSchoolAdmin, verifyAdminPassword, requireAdminById
 ├── school.service.ts         getAllSchools, getSchoolById, createSchool, updateSchool, deleteSchool
-└── settings.service.ts        getInstituteProfile, updateInstituteProfile, uploadSchoolLogo, getAccountSettings, updateAccountSettings
+├── settings.service.ts        getInstituteProfile, updateInstituteProfile, uploadSchoolLogo, getAccountSettings, updateAccountSettings
+└── employee.service.ts       getEmployees, getEmployeeById, createEmployee, updateEmployee, deleteEmployee
 
 types/
-├── school.types.ts           School, SchoolAdmin, NewSchool, UpdateSchool
+├── school.types.ts           School, SchoolAdmin, Employee, NewEmployee, UpdateEmployee, NewSchool, UpdateSchool
 └── api.types.ts
 
 supabase/
@@ -271,11 +304,19 @@ Only Admin has a backend. Employee/Student, Sign Up, and Forgot-password show in
 ### `school_admins`
 `id` (uuid pk), `school_id` (fk → schools, ON DELETE CASCADE), `name`, `email`, `password_hash` (bcrypt), `is_active` (bool), `created_at`, `updated_at`; unique `(school_id, email)`.
 
+### `employees`
+`id` (uuid pk), `school_id` (fk → schools, ON DELETE CASCADE), `employee_code` (auto-generated, unique per school), `name`, `role` (designation), `father_husband_name`, `gender` (male/female/other), `religion`, `cnic`, `date_of_birth`, `date_of_joining`, `salary` (numeric), `experience`, `phone`, `email`, `address`, `education`, `photo_url`, `login_username` (auto-generated), `password_hash` (bcrypt), `is_login_active` (bool), `is_active` (bool), `created_at`, `updated_at`.
+
+### `employee_attachments`
+Attachments uploaded for employees (documents, certificates, etc.). Stored in Supabase Storage.
+
 ### RLS
 Enabled on both tables. Public-read policies + service-role bypass for trusted writes. Policies will tighten once school-admin login RBAC lands.
 
 ### Storage
 Bucket `school-logos` — public read, authenticated write. Logo upload goes through the service-role API route (`/api/settings/institute-profile/[schoolId]/logo`): validates 500KB / JPG/PNG, uploads, updates `schools.logo_url`.
+Bucket `employee-photos` — for employee profile photos.
+Bucket `employee-attachments` — for employee documents/certificates.
 
 ### Reserved (schema-ready, not built)
 students, teachers, parents, classes, sections, subjects, attendance, exams, grades, fee_structure, invoices, payments, subscriptions, plans — all FK-linked to `school_id`.
@@ -316,22 +357,56 @@ See `docs/database.md` for full DDL and `docs/roadmap.md` for the build order.
 
 ---
 
-## 12. What to build next (Phase 2 priorities)
+## 12. Employee Module & PDF Generation
+
+### Employee Management (`features/employees/`)
+- Full CRUD: create, read, update, delete employees scoped to `school_id`
+- List page with search, role filter, pagination
+- Detail page with tabs: profile info, attachments
+- Photo upload via Supabase Storage
+- Attachment upload/download/delete
+- Active/inactive toggle
+- Auto-generated `employee_code` and `login_username`
+
+### ID Card Generation (Puppeteer-based)
+- **Route:** `app/api/employees/id-cards/pdf/route.ts` — GET request, returns PDF buffer
+- **Template:** `features/employees/id-card-html.ts` — builds HTML string with CSS
+- **Client:** `features/employees/id-cards-client.tsx` — employee selection, theme customization, iframe preview, download button
+- **Types:** `features/employees/id-card-types.ts` — `IdCardTheme` interface + `DEFAULT_ID_CARD_THEME`
+- **Card size:** CR80 portrait (53.98mm × 85.6mm), 6 cards per A4 page (2 cols × 3 rows)
+- **Design:** Navy gradient header with gold underline, circular logo overlapping header, STAFF ID badge (gold pill, header right), school name + tagline, gold-ring circular photo, name, info rows (Employee ID, Designation, Phone, Joining Date), navy footer with school phone + address, logo watermark
+- **Theme:** Customizable accent color, gold color, text color, bg color. Default: `#243c8b` accent, `#c89a2b` gold, `#1f2937` text, `#ffffff` bg
+- **Scaling:** All px values scaled from 340px reference design to mm via `SCALE = CARD_W_MM / 340`
+- **Removed files:** `id-card-pdf.tsx` and `id-card-pdf-viewer.tsx` (old `@react-pdf/renderer` implementation, replaced by Puppeteer)
+
+### Job Offer Letter (`@react-pdf/renderer`-based)
+- **Template:** `features/employees/job-offer-letter-pdf.tsx` — React-based PDF document
+- **Viewer:** `features/employees/job-offer-pdf-viewer.tsx` — client-side `PDFViewer` wrapper
+- **Page:** `app/(admin)/school/employees/offer-letter/[employeeId]/page.tsx` — full-screen PDF viewer
+- **Design:** Navy/gold color scheme matching ID cards (`#243c8b` navy, `#c89a2b` gold), top accent strip (navy + gold), header with logo + school info, divider with gold dot, meta band (reference + date), title block, salutation, body paragraphs, employee particulars grid (2-column), terms of employment (numbered list), rules & regulations, acceptance callout, signature blocks, bottom navy strip with gold top line
+- **Watermark:** School logo as centered, fixed overlay (opacity 0.06, `marginTop: -150` for vertical centering)
+- **Layout:** 2 pages — page 1: header + particulars, page 2: terms + signatures
+
+---
+
+## 13. What to build next (Phase 2 priorities)
 
 1. **Verify migrations applied**, then do a cleanup pass to clear the pre-existing `tsc` errors so `npm run build` passes.
-2. **School admin login polish** — wire `remember` to cookie maxAge; build forgot/reset password flow.
-3. **Classes & Sections** CRUD, then **Students** (with photo upload reusing the Storage pattern), **Teachers**, **Parents**.
-4. **Attendance** (daily, per class/section), **Exams & Grades** (mark entry, report cards), **Fees** (structure, invoices, payments).
-5. Then Phase 3: subscriptions/billing (Stripe), role portals, notifications, reports.
+2. **Classes & Sections** CRUD, then **Students** (with photo upload reusing the Storage pattern), **Teachers**, **Parents**.
+3. **Attendance** (daily, per class/section), **Exams & Grades** (mark entry, report cards), **Fees** (structure, invoices, payments).
+4. Then Phase 3: subscriptions/billing (Stripe), role portals, notifications, reports.
 
 See `docs/roadmap.md` for the full plan.
 
 ---
 
-## 13. Quick orientation for a fresh session
+## 14. Quick orientation for a fresh session
 
 - To see the running app: `npm run dev`, open `http://localhost:3000` (lands on `/school-login`). Master dashboard is at `/master-login` → `/master`.
 - To create a school to log in with: go to `/master-login` (env creds), create a school + first admin, then sign in at `/school-login` with that admin's email/password.
 - The login mutation is `POST /api/auth/school-login` → sets `school_session` cookie → `/school` (guarded by `app/(admin)/layout.tsx`).
 - Design system lives in `app/globals.css` (tokens) + `tailwind.config.ts` (brand color + keyframes). Brand purple `#6D4AFF` is `--primary` and `bg-brand`.
 - All multi-tenant queries must read `schoolId` from the verified session — never trust client-supplied `schoolId` for writes.
+- **ID card PDFs** are generated via Puppeteer at `GET /api/employees/id-cards/pdf?ids=...&accentColor=...&goldColor=...`. The client uses an `<iframe>` to preview and a download button with `&download=1`.
+- **Job offer letters** are generated client-side via `@react-pdf/renderer` `PDFViewer` component (no server route needed).
+- **Color scheme** for both ID cards and offer letters: Navy `#243c8b`, Gold `#c89a2b`, Dark Navy `#1d2f73`, Gold Light `#e8d39e`.

@@ -1,0 +1,110 @@
+<html>
+<head>
+  <title>ID Card Generator</title>
+  <link href="https://fonts.googleapis.com/css?family=Titillium+Web" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css?family=Kaushan+Script" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css?family=Monda" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/jsbarcode/3.3.20/JsBarcode.all.min.js"></script>
+  <script src="script.js"></script>
+  <link href="dialog.css" rel="stylesheet">
+  <link href="style.css" rel="stylesheet">
+</head>
+
+<body>
+  <div class="dialog">
+    <h1>Generate ID Cards</h1>
+    <span>Enter the information into the following fields or use JSON import.</span>
+    <h2>Enter Data</h2>    
+    <input type="checkbox" name="autoIncrement" onchange="autoIncrement(this)">Use Auto Increment from <input type="number" value=1 id="beginningTarget">
+    <table id="infoTable">
+      <thead>
+        <tr>
+          <th>Barcode ID</th>
+          <th>Name</th>
+          <th>Role</th>
+        </tr>
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
+    <button onclick="addRow()">Add Row</button>
+    <button onclick="converttoJSON()">Convert to JSON</button>
+    <hr>
+    <h2>Enter JSON</h2>
+    <textarea class="jsonInput"></textarea>
+    <button onclick="converttoReadable()">Populate Fields</button>
+    <button type="submit" onclick="submitJSON()">Submit</button>
+  </div>
+  <div class="pages"></div>
+  
+  <template id="cardfrontTemplate">
+      <div class="card cardfront">
+        <img src="logo.png" class="logo" alt="logo">
+        <span class="title">Hack<strong>UC</strong> II</span>
+        <div class="bottomText">
+          <span class="participant"></span>
+          <span class="role"></span>
+        </div>
+      </div>
+  </template>
+    
+  <template id="cardbackTemplate"> 
+    <div class="card cardback">
+      <span class="welcome">Welcome to HackUC!</span>
+      <p class="information"></p>
+      <div class="wifiInfo">
+        <img src="wifi.png" alt="wifi" />
+        <span class="backprominent">UCVTS-Guest</span>
+      </div>
+      <table class="schedule" cellspacing=0>
+        <tr>
+          <td>Opening</td>
+          <td>3:30 PM</td>
+        </tr>
+        <tr>
+          <td>Dinner</td>
+          <td>8:00 PM</td>
+        </tr>
+        <tr>
+          <td>Breakfast</td>
+          <td>8:00 AM</td>
+        </tr>
+        <tr>
+          <td>Lunch</td>
+          <td>12:00 PM</td>
+        </tr>
+        <tr>
+          <td>Demos</td>
+          <td>1:00 PM</td>
+        </tr>
+        <tr>
+          <td>Closing</td>
+          <td>2:30 PM</td>
+        </tr>
+      </table>
+      <span class="scheduleDescription">Find more information on http://hackuc.com/schedule.</span>
+      <div class="barcode">
+        <svg></svg>
+      </div>
+    </div>
+  </template>
+  
+  <template id="rowTemplate">
+    <tr class="row">
+      <td><input type="number" class="rowID"></td>
+      <td><input type="text" class="rowName"></td>
+      <td><select class="rowRole">
+        <option value="hacker">Hacker</option>
+        <option value="organizer">Organizer</option>
+        <option value="sponsor">Sponsor</option>
+        <option value="speaker">Speaker</option>
+        <option value="mentor">Mentor</option>
+        <option value="volunteer">Volunteer</option>
+        <option value="special">Special</option>
+        <option value="admin">Admin</option>
+        </select></td>
+    </tr>
+  </template>
+
+  </body>
+</html>

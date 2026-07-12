@@ -1,6 +1,6 @@
 # Roadmap
 
-## Phase 1 — Foundation & Core Portal (CURRENT)
+## Phase 1 — Foundation & Core Portal (COMPLETE)
 
 **Goal:** Get the multi-tenant foundation, master login, and admin portal skeleton in place.
 
@@ -28,51 +28,76 @@
 
 ---
 
-## Phase 2 — Admin Auth & Core Modules
+## Phase 2 — Admin Auth & Core Modules (IN PROGRESS)
 
 **Goal:** Complete the admin auth flow and add the core ERP modules.
 
-### 2.1 School Admin Login
+### 2.1 School Admin Login (COMPLETE)
 
-- `/school-login` page (email + password).
-- API `/api/auth/school-login` — bcrypt verify, issue JWT with `school_id`.
-- Forgot / reset password flow.
+- ✅ `/school-login` page (email + password, premium two-panel UI)
+- ✅ API `/api/auth/school-login` — bcrypt verify, issue JWT with `school_id`
+- ⏳ Forgot / reset password flow
 
-### 2.2 Classes & Sections
+### 2.2 Employee Management (COMPLETE)
+
+- ✅ Employee CRUD (create, list, detail, edit, delete)
+- ✅ Employee photo upload (Supabase Storage)
+- ✅ Employee attachments (upload, download, delete)
+- ✅ Employee active/inactive toggle
+- ✅ Auto-generated employee codes and login usernames
+
+### 2.3 ID Card Generation (COMPLETE)
+
+- ✅ Puppeteer-based PDF generation (server-side)
+- ✅ CR80 portrait card size (53.98mm × 85.6mm), 6 per A4 page
+- ✅ Premium design: navy gradient header, gold accents, circular logo, gold-ring photo, STAFF ID badge
+- ✅ Theme customization (accent, gold, text, bg colors)
+- ✅ Client-side iframe preview + download
+- ✅ Logo watermark on each card
+
+### 2.4 Job Offer Letter (COMPLETE)
+
+- ✅ `@react-pdf/renderer`-based PDF generation
+- ✅ Premium navy/gold design matching ID cards
+- ✅ School logo watermark (centered, fixed overlay)
+- ✅ 2-page layout: employee particulars + terms of employment
+- ✅ Signature blocks, acceptance callout, rules & regulations
+
+### 2.5 Classes & Sections (PENDING)
 
 - CRUD for classes and sections.
 - Assign section teachers.
 
-### 2.3 Students
+### 2.6 Students (PENDING)
 
 - Student CRUD (import / export CSV).
 - Profile photo upload (Supabase Storage).
 - Assign to class/section.
 - Parent linkage.
 
-### 2.4 Teachers
+### 2.7 Teachers (PENDING)
 
 - Teacher CRUD.
 - Assign subjects to teachers.
 
-### 2.5 Parents
+### 2.8 Parents (PENDING)
 
 - Parent CRUD.
 - Link to students.
 
-### 2.6 Attendance
+### 2.9 Attendance (PENDING)
 
 - Daily attendance (per class/section).
 - Calendar view.
 - Reports (class-wise, student-wise).
 
-### 2.7 Exams & Grades
+### 2.10 Exams & Grades (PENDING)
 
 - Exam definition + grading.
 - Mark entry.
 - Report cards.
 
-### 2.8 Fees
+### 2.11 Fees (PENDING)
 
 - Fee structure per class.
 - Invoice generation.
@@ -133,3 +158,5 @@
 - `.env` secret keys must be moved to a secrets manager before production.
 - RLS policies need tightening once school admin login is in place.
 - Consider moving from custom JWT to Supabase Auth when multi-role RBAC complexity grows.
+- **Puppeteer** requires Chromium on the server — ensure deployment environment supports it (or switch to `@sparticuz/chromium` for serverless).
+- Two PDF libraries in use (Puppeteer + `@react-pdf/renderer`) — consider consolidating if maintenance becomes burdensome.

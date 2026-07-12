@@ -11,9 +11,9 @@ import {
 import type { Employee, School } from "@/types/school.types";
 
 // ── Premium palette ──────────────────────────────────────────────────────────
-const NAVY = "#0b1d39"; // primary
-const NAVY_DARK = "#050d1f"; // accent darker
-const GOLD = "#c9a253"; // brand accent
+const NAVY = "#243c8b"; // primary — matches ID card accent
+const NAVY_DARK = "#1d2f73"; // accent darker
+const GOLD = "#c89a2b"; // brand accent — matches ID card gold
 const GOLD_LIGHT = "#e8d39e";
 const INK = "#1f2937"; // body
 const INK_SOFT = "#475569"; // body soft
@@ -275,15 +275,19 @@ const s = StyleSheet.create({
   // ── Watermark ───────────────────────────────────────────────────────────────
   watermark: {
     position: "absolute",
-    top: "40%",
+    top: "50%",
     left: 0,
     right: 0,
     textAlign: "center",
-    fontSize: 80,
-    color: "#f5f3eb",
-    fontFamily: "Helvetica-Bold",
-    transform: "rotate(-30deg)",
-    opacity: 0.5,
+    marginTop: -150,
+    opacity: 0.06,
+  },
+  watermarkImg: {
+    width: 300,
+    height: 300,
+    objectFit: "contain",
+    marginLeft: "auto",
+    marginRight: "auto",
   },
 });
 
@@ -381,8 +385,12 @@ export function JobOfferPDF({ employee, school }: Props) {
       subject="Job Offer Letter"
     >
       <Page size="A4" style={s.page}>
-        {/* Faint watermark */}
-        <Text style={s.watermark}>OFFER</Text>
+        {/* Faint logo watermark — fixed so it overlays without affecting layout */}
+        {school.logo_url && (
+          <View style={s.watermark} fixed>
+            <Image src={school.logo_url} style={s.watermarkImg} />
+          </View>
+        )}
 
         {/* Top accent strip */}
         <View style={s.accentStrip}>

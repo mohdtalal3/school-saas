@@ -7,9 +7,9 @@ import { IdCardsClient } from "@/features/employees/id-cards-client";
 interface PageProps {
   searchParams: Promise<{
     ids?: string;
-    orientation?: "portrait" | "landscape";
     textColor?: string;
     accentColor?: string;
+    goldColor?: string;
     bgColor?: string;
   }>;
 }
@@ -40,10 +40,10 @@ export default async function IdCardsPage({ searchParams }: PageProps) {
       employees={filteredEmployees}
       allEmployees={employees}
       school={school}
-      initialOrientation={sp.orientation ?? "portrait"}
       initialTheme={{
         textColor: sp.textColor ?? "#1f2937",
-        accentColor: sp.accentColor ?? "#0b1d39",
+        accentColor: sp.accentColor ?? "#243c8b",
+        goldColor: sp.goldColor ?? "#c89a2b",
         bgColor: sp.bgColor ?? "#ffffff",
       }}
     />
