@@ -18,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -496,7 +496,7 @@ export function ClassManagement({ schoolId }: ClassManagementProps) {
           </Card>
         ) : (
           <>
-            {/* Search + Summary bar */}
+            {/* Search bar */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
@@ -509,7 +509,6 @@ export function ClassManagement({ schoolId }: ClassManagementProps) {
                 </span>
               </div>
 
-              {/* Search input */}
               <div className="relative w-full sm:w-64">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -519,55 +518,72 @@ export function ClassManagement({ schoolId }: ClassManagementProps) {
                   className="pl-9 pr-8"
                 />
                 {search && (
-                  <X
-                    className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
+                  <button
                     onClick={() => setSearch("")}
-                  />
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 )}
               </div>
             </div>
 
-            {/* Card grid */}
-            {classes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <Search className="mb-3 h-8 w-8 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">
-                  No classes match "{search}".
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-3"
-                  onClick={() => setSearch("")}
-                >
-                  Clear search
-                </Button>
-              </div>
-            ) : (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-medium">
+                <BookOpen className="h-4 w-4 text-muted-foreground" />
+                Class Directory
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                  {totalClasses}
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
               <>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  <AnimatePresence>
-                    {classes.map((cls) => (
-                      <ClassCard
-                        key={cls.id}
-                        cls={cls}
-                        onEdit={openEdit}
-                        onDelete={openDelete}
+                {/* Card grid */}
+                {classes.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <Search className="mb-3 h-8 w-8 text-muted-foreground/50" />
+                    <p className="text-sm text-muted-foreground">
+                      No classes match "{search}".
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => setSearch("")}
+                    >
+                      Clear search
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      <AnimatePresence>
+                        {classes.map((cls) => (
+                          <ClassCard
+                            key={cls.id}
+                            cls={cls}
+                            onEdit={openEdit}
+                            onDelete={openDelete}
+                          />
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                    <div className="mt-4">
+                      <Pagination
+                        page={page}
+                        pageSize={pageSize}
+                        total={totalClasses}
+                        onPageChange={setPage}
+                        onPageSizeChange={handlePageSizeChange}
                       />
-                    ))}
-                  </AnimatePresence>
-                </div>
-                <div className="mt-4">
-                  <Pagination
-                    page={page}
-                    pageSize={pageSize}
-                    total={totalClasses}
-                    onPageChange={setPage}
-                    onPageSizeChange={handlePageSizeChange}
-                  />
-                </div>
+                    </div>
+                  </>
+                )}
               </>
-            )}
+            </CardContent>
+          </Card>
           </>
         )}
       </motion.div>

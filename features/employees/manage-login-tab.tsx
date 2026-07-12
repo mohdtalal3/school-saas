@@ -393,11 +393,24 @@ function EditCredentialsDialog({
 
 // ── Main tab ──────────────────────────────────────────────────────────────────
 
-export function ManageLoginTab({ schoolId }: { schoolId: string }) {
+export function ManageLoginTab({
+  schoolId,
+  controlledSearch,
+  controlledSetSearch,
+  hideSearchBar,
+}: {
+  schoolId: string;
+  controlledSearch?: string;
+  controlledSetSearch?: (v: string) => void;
+  hideSearchBar?: boolean;
+}) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [editing, setEditing] = React.useState<Employee | null>(null);
-  const { page, pageSize, search, setPage, setSearch, handlePageSizeChange } = useServerPagination();
+  const { page, pageSize, setPage, handlePageSizeChange } = useServerPagination();
+  const [internalSearch, setInternalSearch] = React.useState("");
+  const search = controlledSearch ?? internalSearch;
+  const setSearch = controlledSetSearch ?? setInternalSearch;
 
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
   React.useEffect(() => {
@@ -453,32 +466,35 @@ export function ManageLoginTab({ schoolId }: { schoolId: string }) {
       <Card>
         <CardContent className="p-4 sm:p-6">
           {/* Header row */}
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              <KeyRound className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-base font-medium">Manage Employee Logins</h3>
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                {totalEmployees}
-              </span>
-            </div>
-            <div className="relative w-full sm:w-80">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search by name, username, role..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 pr-9"
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+          <div className="mb-4 flex items-center gap-2">
+            <KeyRound className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-base font-medium">Manage Employee Logins</h3>
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+              {totalEmployees}
+            </span>
           </div>
+
+          {!hideSearchBar && (
+            <div className="mb-4 flex justify-end">
+              <div className="relative w-full sm:w-64">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, username, role..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 pr-8"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {isLoading ? (
             <div className="flex items-center justify-center py-12">

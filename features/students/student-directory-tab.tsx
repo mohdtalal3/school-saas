@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { DirectoryTable, type DirectoryColumn } from "@/components/ui/directory-table";
+import { DirectoryTable, type DirectoryColumn, type ActiveFilter } from "@/components/ui/directory-table";
 import type { StudentWithClass, SchoolClass } from "@/types/school.types";
 
 async function fetchStudentsForDirectory(
@@ -88,9 +88,25 @@ const exportColumns: DirectoryColumn<StudentWithClass>[] = [
 
 interface Props {
   schoolId: string;
+  controlledSearch?: string;
+  controlledSetSearch?: (v: string) => void;
+  controlledActiveFilter?: ActiveFilter;
+  controlledSetActiveFilter?: (f: ActiveFilter) => void;
+  controlledClassId?: string;
+  controlledSetClassId?: (v: string) => void;
+  hideFilterBar?: boolean;
 }
 
-export function StudentDirectoryTab({ schoolId }: Props) {
+export function StudentDirectoryTab({
+  schoolId,
+  controlledSearch,
+  controlledSetSearch,
+  controlledActiveFilter,
+  controlledSetActiveFilter,
+  controlledClassId,
+  controlledSetClassId,
+  hideFilterBar,
+}: Props) {
   const { data: classes = [] } = useQuery({
     queryKey: ["classes", schoolId, "directory"],
     queryFn: () => fetchClasses(schoolId),
@@ -107,6 +123,13 @@ export function StudentDirectoryTab({ schoolId }: Props) {
       entityLabel="students"
       toggleEndpoint={`/api/students/${schoolId}/{id}`}
       classFilter={{ classes }}
+      controlledSearch={controlledSearch}
+      controlledSetSearch={controlledSetSearch}
+      controlledActiveFilter={controlledActiveFilter}
+      controlledSetActiveFilter={controlledSetActiveFilter}
+      controlledClassId={controlledClassId}
+      controlledSetClassId={controlledSetClassId}
+      hideFilterBar={hideFilterBar}
     />
   );
 }

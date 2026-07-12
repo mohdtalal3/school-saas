@@ -48,9 +48,16 @@ interface DirectoryTableProps<T extends { id: string; is_active: boolean }> {
   entityLabel: string;
   toggleEndpoint: string;
   classFilter?: DirectoryClassFilter;
+  controlledSearch?: string;
+  controlledSetSearch?: (v: string) => void;
+  controlledActiveFilter?: ActiveFilter;
+  controlledSetActiveFilter?: (f: ActiveFilter) => void;
+  controlledClassId?: string;
+  controlledSetClassId?: (v: string) => void;
+  hideFilterBar?: boolean;
 }
 
-type ActiveFilter = "active" | "inactive" | "all";
+export type ActiveFilter = "active" | "inactive" | "all";
 
 export function DirectoryTable<T extends { id: string; is_active: boolean }>({
   schoolId,
@@ -62,13 +69,28 @@ export function DirectoryTable<T extends { id: string; is_active: boolean }>({
   entityLabel,
   toggleEndpoint,
   classFilter,
+  controlledSearch,
+  controlledSetSearch,
+  controlledActiveFilter,
+  controlledSetActiveFilter,
+  controlledClassId,
+  controlledSetClassId,
+  hideFilterBar,
 }: DirectoryTableProps<T>) {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { page, pageSize, search, setPage, setSearch, handlePageSizeChange } = useServerPagination();
-  const [activeFilter, setActiveFilter] = React.useState<ActiveFilter>("active");
-  const [classId, setClassId] = React.useState<string>("all");
+  const { page, pageSize, setPage, handlePageSizeChange } = useServerPagination();
+  const [internalSearch, setInternalSearch] = React.useState("");
+  const [internalActiveFilter, setInternalActiveFilter] = React.useState<ActiveFilter>("active");
+  const [internalClassId, setInternalClassId] = React.useState<string>("all");
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+
+  const search = controlledSearch ?? internalSearch;
+  const setSearch = controlledSetSearch ?? setInternalSearch;
+  const activeFilter = controlledActiveFilter ?? internalActiveFilter;
+  const setActiveFilter = controlledSetActiveFilter ?? setInternalActiveFilter;
+  const classId = controlledClassId ?? internalClassId;
+  const setClassId = controlledSetClassId ?? setInternalClassId;
 
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
   React.useEffect(() => {
@@ -232,6 +254,7 @@ export function DirectoryTable<T extends { id: string; is_active: boolean }>({
   return (
     <div className="space-y-4">
       {/* Toolbar */}
+      {!hideFilterBar && (
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           {/* Active filter tabs */}
@@ -289,6 +312,7 @@ export function DirectoryTable<T extends { id: string; is_active: boolean }>({
           </div>
         </div>
       </div>
+      )}
 
       {/* Export buttons */}
       <div className="flex flex-wrap items-center gap-2">

@@ -53,6 +53,7 @@ import { JobOfferTab } from "./job-offer-tab";
 import { AttachmentsTab } from "./attachments-tab";
 import { IdCardsTab } from "./id-cards-tab";
 import { EmployeeDirectoryTab } from "./employee-directory-tab";
+import type { ActiveFilter } from "@/components/ui/directory-table";
 import type { Employee } from "@/types/school.types";
 import { getInitials } from "@/lib/utils";
 
@@ -416,7 +417,7 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
   } | null>(null);
   const [showCredentials, setShowCredentials] = React.useState(false);
 
-  const [empActiveFilter, setEmpActiveFilter] = React.useState<"active" | "inactive" | "all">("active");
+  const [empActiveFilter, setEmpActiveFilter] = React.useState<ActiveFilter>("active");
 
   // Debounce search
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
@@ -701,8 +702,9 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
               </TabsTrigger>
             </TabsList>
 
-            {tab === "all" && (
+            {(tab === "all" || tab === "list" || tab === "login") && (
               <div className="flex items-center gap-2">
+                {(tab === "all" || tab === "list") && (
                 <div className="inline-flex rounded-md border bg-muted/40 p-0.5">
                   {(["active", "inactive", "all"] as const).map((f) => (
                     <button
@@ -718,6 +720,7 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
                     </button>
                   ))}
                 </div>
+                )}
                 <div className="relative w-full sm:w-64">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -812,12 +815,37 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
 
           {/* ── Basic List tab ── */}
           <TabsContent value="list" className="mt-4">
-            <EmployeeDirectoryTab schoolId={schoolId} />
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base font-medium">
+                  <Table className="h-4 w-4 text-muted-foreground" />
+                  Employee List
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                    {totalEmployees}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <EmployeeDirectoryTab
+                  schoolId={schoolId}
+                  controlledSearch={search}
+                  controlledSetSearch={setSearch}
+                  controlledActiveFilter={empActiveFilter}
+                  controlledSetActiveFilter={setEmpActiveFilter}
+                  hideFilterBar
+                />
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ── Manage Login tab ── */}
           <TabsContent value="login" className="mt-4">
-            <ManageLoginTab schoolId={schoolId} />
+            <ManageLoginTab
+              schoolId={schoolId}
+              controlledSearch={search}
+              controlledSetSearch={setSearch}
+              hideSearchBar
+            />
           </TabsContent>
 
           {/* ── Job Offer Letter tab ── */}

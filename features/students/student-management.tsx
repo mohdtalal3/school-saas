@@ -67,6 +67,7 @@ import { SearchPicker } from "@/components/ui/search-picker";
 import { useToast } from "@/components/ui/toast";
 import { StudentForm } from "./student-form";
 import { StudentDirectoryTab } from "./student-directory-tab";
+import type { ActiveFilter } from "@/components/ui/directory-table";
 import type {
   Student,
   StudentWithClass,
@@ -687,7 +688,8 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
   const [selected, setSelected] = React.useState<Student | null>(null);
   const [viewStudent, setViewStudent] = React.useState<StudentWithClass | null>(null);
   const [classFilter, setClassFilter] = React.useState<string>("all");
-  const [studentActiveFilter, setStudentActiveFilter] = React.useState<"active" | "inactive" | "all">("active");
+  const [studentActiveFilter, setStudentActiveFilter] = React.useState<ActiveFilter>("active");
+  const [studentTab, setStudentTab] = React.useState<string>("all");
   const { page, pageSize, search, setPage, setSearch, handlePageSizeChange } = useServerPagination();
 
   // Debounce search
@@ -853,96 +855,99 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
           </p>
         </div>
 
-        <Tabs defaultValue="all">
-          <TabsList>
-            <TabsTrigger value="all" className="gap-1.5">
-              <Users className="h-3.5 w-3.5" />
-              All Students
-            </TabsTrigger>
-            <TabsTrigger value="list" className="gap-1.5">
-              <Table className="h-3.5 w-3.5" />
-              Basic List
-            </TabsTrigger>
-            <TabsTrigger value="attachments" className="gap-1.5">
-              <Paperclip className="h-3.5 w-3.5" />
-              Attachments
-            </TabsTrigger>
-          </TabsList>
+        <Tabs value={studentTab} onValueChange={setStudentTab} className="w-full">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <TabsList>
+              <TabsTrigger value="all" className="gap-1.5">
+                <Users className="h-3.5 w-3.5" />
+                All Students
+              </TabsTrigger>
+              <TabsTrigger value="list" className="gap-1.5">
+                <Table className="h-3.5 w-3.5" />
+                Basic List
+              </TabsTrigger>
+              <TabsTrigger value="attachments" className="gap-1.5">
+                <Paperclip className="h-3.5 w-3.5" />
+                Attachments
+              </TabsTrigger>
+            </TabsList>
+
+            {(studentTab === "all" || studentTab === "list") && (
+              <div className="flex items-center gap-2">
+                <div className="inline-flex rounded-md border bg-muted/40 p-0.5">
+                  {(["active", "inactive", "all"] as const).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => { setStudentActiveFilter(f); setPage(1); }}
+                      className={`rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
+                        studentActiveFilter === f
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {f === "all" ? "All" : f}
+                    </button>
+                  ))}
+                </div>
+                <Select value={classFilter} onValueChange={setClassFilter}>
+                  <SelectTrigger className="w-full sm:w-44">
+                    <SelectValue placeholder="Filter by class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Classes</SelectItem>
+                    {classes.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="relative w-full sm:w-64">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search name, reg no, father..."
+                    className="pl-9 pr-8"
+                  />
+                  {search && (
+                    <button
+                      onClick={() => setSearch("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                {studentTab === "all" && (
+                  <Button onClick={openAdd} className="gap-2 shrink-0">
+                    <Plus className="h-4 w-4" />
+                    Add Student
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* All Students tab */}
           <TabsContent value="all" className="mt-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base font-medium">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  Student Directory
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                    {totalStudents}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
             {isLoading ? (
-              <div className="flex items-center justify-center py-20">
+              <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : students.length === 0 ? (
-              <Card><CardContent><EmptyState onCreate={openAdd} /></CardContent></Card>
+              <EmptyState onCreate={openAdd} />
             ) : (
               <>
-                {/* Search + Filter bar */}
-                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Users className="h-4 w-4" />
-                      {totalStudents} {totalStudents === 1 ? "student" : "students"}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    {/* Active filter */}
-                    <div className="inline-flex rounded-md border bg-muted/40 p-0.5">
-                      {(["active", "inactive", "all"] as const).map((f) => (
-                        <button
-                          key={f}
-                          onClick={() => { setStudentActiveFilter(f); setPage(1); }}
-                          className={`rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
-                            studentActiveFilter === f
-                              ? "bg-background text-foreground shadow-sm"
-                              : "text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          {f === "all" ? "All" : f}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Class filter */}
-                    <Select value={classFilter} onValueChange={setClassFilter}>
-                      <SelectTrigger className="w-full sm:w-44">
-                        <SelectValue placeholder="Filter by class" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Classes</SelectItem>
-                        {classes.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    {/* Search */}
-                    <div className="relative w-full sm:w-64">
-                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search name, reg no, father..."
-                        className="pl-9 pr-8"
-                      />
-                      {search && (
-                        <X
-                          className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
-                          onClick={() => setSearch("")}
-                        />
-                      )}
-                    </div>
-
-                    <Button onClick={openAdd} className="gap-2 shrink-0">
-                      <Plus className="h-4 w-4" />
-                      Add Student
-                    </Button>
-                  </div>
-                </div>
-
                 {/* Card grid */}
                 {students.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -980,11 +985,35 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
                 )}
               </>
             )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Basic List tab */}
           <TabsContent value="list" className="mt-4">
-            <StudentDirectoryTab schoolId={schoolId} />
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base font-medium">
+                  <Table className="h-4 w-4 text-muted-foreground" />
+                  Student List
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                    {totalStudents}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <StudentDirectoryTab
+                  schoolId={schoolId}
+                  controlledSearch={search}
+                  controlledSetSearch={setSearch}
+                  controlledActiveFilter={studentActiveFilter}
+                  controlledSetActiveFilter={setStudentActiveFilter}
+                  controlledClassId={classFilter}
+                  controlledSetClassId={setClassFilter}
+                  hideFilterBar
+                />
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Attachments tab */}

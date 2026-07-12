@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { DirectoryTable, type DirectoryColumn } from "@/components/ui/directory-table";
+import { DirectoryTable, type DirectoryColumn, type ActiveFilter } from "@/components/ui/directory-table";
 import type { Employee } from "@/types/school.types";
 
 async function fetchEmployeesForDirectory(
@@ -78,9 +78,21 @@ const exportColumns: DirectoryColumn<Employee>[] = [
 
 interface Props {
   schoolId: string;
+  controlledSearch?: string;
+  controlledSetSearch?: (v: string) => void;
+  controlledActiveFilter?: ActiveFilter;
+  controlledSetActiveFilter?: (f: ActiveFilter) => void;
+  hideFilterBar?: boolean;
 }
 
-export function EmployeeDirectoryTab({ schoolId }: Props) {
+export function EmployeeDirectoryTab({
+  schoolId,
+  controlledSearch,
+  controlledSetSearch,
+  controlledActiveFilter,
+  controlledSetActiveFilter,
+  hideFilterBar,
+}: Props) {
   return (
     <DirectoryTable<Employee>
       schoolId={schoolId}
@@ -91,6 +103,11 @@ export function EmployeeDirectoryTab({ schoolId }: Props) {
       exportFilename="employees"
       entityLabel="employees"
       toggleEndpoint={`/api/employees/${schoolId}/{id}`}
+      controlledSearch={controlledSearch}
+      controlledSetSearch={controlledSetSearch}
+      controlledActiveFilter={controlledActiveFilter}
+      controlledSetActiveFilter={controlledSetActiveFilter}
+      hideFilterBar={hideFilterBar}
     />
   );
 }
