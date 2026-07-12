@@ -243,9 +243,14 @@ export function AttachmentsTab({ schoolId }: Props) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Search bar */}
-      <div className="mx-auto max-w-2xl">
+    <Card className="mx-auto max-w-3xl">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-medium">
+          <Paperclip className="h-4 w-4 text-muted-foreground" />
+          Employee Attachments
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
         <SearchPicker
           placeholder="Type at least 3 letters to search employees..."
           searchFn={(q) => searchEmployees(schoolId, q)}
@@ -263,10 +268,9 @@ export function AttachmentsTab({ schoolId }: Props) {
             } as Employee)
           }
         />
-      </div>
 
-      {/* Attachments panel */}
-      {selectedEmployee ? (
+        {/* Attachments panel */}
+        {selectedEmployee ? (
         <Card className="mx-auto max-w-3xl">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -391,6 +395,8 @@ export function AttachmentsTab({ schoolId }: Props) {
           employeeName={uploadFor.name}
         />
       )}
-    </div>
+
+      </CardContent>
+    </Card>
   );
 }

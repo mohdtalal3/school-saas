@@ -2,7 +2,7 @@
 import subprocess
 import sys
 
-COMMIT_MESSAGE = "add addmission letter for student"
+COMMIT_MESSAGE = "match the same container pattern in all tabs"
 
 def run(cmd):
     print(f"▶ {cmd}")

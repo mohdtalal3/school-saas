@@ -37,15 +37,20 @@ export function IdCardsTab({ schoolId }: IdCardsTabProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
-        <Button onClick={openPrintAll} className="gap-2">
-          <Printer className="h-4 w-4" />
-          Print All Employees
-        </Button>
-      </div>
-
-      <div className="mx-auto max-w-2xl">
+    <Card className="mx-auto max-w-2xl">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base font-medium">
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
+            Employee ID Cards
+          </CardTitle>
+          <Button onClick={openPrintAll} size="sm" className="gap-2">
+            <Printer className="h-3.5 w-3.5" />
+            Print All
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
         <SearchPicker
           placeholder="Type at least 3 letters to search employees..."
           searchFn={(q) => searchEmployees(schoolId, q)}
@@ -63,46 +68,46 @@ export function IdCardsTab({ schoolId }: IdCardsTabProps) {
             } as Employee)
           }
         />
-      </div>
 
-      {/* Selected employee — ID card card */}
-      {selected && (
-        <Card className="mx-auto max-w-md">
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10">
-                {selected.photo_url && (
-                  <AvatarImage src={selected.photo_url} alt={selected.name} />
-                )}
-                <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                  {getInitials(selected.name)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <CardTitle className="truncate text-sm font-semibold">
-                  {selected.name}
-                </CardTitle>
-                <p className="truncate text-xs text-muted-foreground">
-                  {selected.role}
-                  {selected.employee_code && ` · ${selected.employee_code}`}
-                </p>
+        {/* Selected employee — ID card card */}
+        {selected && (
+          <Card className="mx-auto max-w-md">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  {selected.photo_url && (
+                    <AvatarImage src={selected.photo_url} alt={selected.name} />
+                  )}
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                    {getInitials(selected.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="truncate text-sm font-semibold">
+                    {selected.name}
+                  </CardTitle>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {selected.role}
+                    {selected.employee_code && ` · ${selected.employee_code}`}
+                  </p>
+                </div>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Button asChild size="sm" className="w-full gap-2">
-              <a
-                href={`/school/employees/id-cards?ids=${selected.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <CreditCard className="h-3.5 w-3.5" />
-                Print ID Card
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+            </CardHeader>
+            <CardContent>
+              <Button asChild size="sm" className="w-full gap-2">
+                <a
+                  href={`/school/employees/id-cards?ids=${selected.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <CreditCard className="h-3.5 w-3.5" />
+                  Print ID Card
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </CardContent>
+    </Card>
   );
 }

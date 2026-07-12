@@ -528,9 +528,14 @@ function AttachmentsTab({ schoolId }: { schoolId: string }) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Search bar */}
-      <div className="mx-auto max-w-2xl">
+    <Card className="mx-auto max-w-3xl">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-medium">
+          <Paperclip className="h-4 w-4 text-muted-foreground" />
+          Student Attachments
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
         <SearchPicker
           placeholder="Type at least 3 letters to search students..."
           searchFn={(q) => searchStudentsForPicker(schoolId, q)}
@@ -550,10 +555,9 @@ function AttachmentsTab({ schoolId }: { schoolId: string }) {
             } as StudentWithClass)
           }
         />
-      </div>
 
-      {/* Attachments panel */}
-      {selectedStudent ? (
+        {/* Attachments panel */}
+        {selectedStudent ? (
         <Card className="mx-auto max-w-3xl">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -669,7 +673,9 @@ function AttachmentsTab({ schoolId }: { schoolId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+
+      </CardContent>
+    </Card>
   );
 }
 
