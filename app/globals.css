@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+
+    /* Brand identity (purple SaaS) */
+    --primary: 250 100% 64%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Login / marketing surfaces */
+    --brand: 250 100% 64%;
+    --brand-dark: 252 63% 24%;
+    --brand-light: 246 84% 95%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --ring: 222 47% 33%;
+
+    --radius: 0.6rem;
+
+    --sidebar: 222 47% 14%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-accent: 222 47% 22%;
+    --sidebar-border: 222 47% 22%;
+
+    --font-sans: "Inter", "system-ui", "sans-serif";
+  }
+
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 213 31% 91%;
+    --muted: 223 47% 11%;
+    --muted-foreground: 215.4 16.3% 56.9%;
+    --popover: 224 71% 4%;
+    --popover-foreground: 215 20.2% 65.1%;
+    --card: 224 71% 4%;
+    --card-foreground: 213 31% 91%;
+    --border: 216 34% 17%;
+    --input: 216 34% 17%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 222 47% 11%;
+    --secondary-foreground: 210 40% 98%;
+    --accent: 216 34% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --ring: 224 71% 4%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+  }
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 3px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .gradient-bg {
+    background:
+      radial-gradient(at 0% 0%, hsl(222 47% 25%) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsl(222 47% 18%) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsl(222 47% 22%) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsl(222 47% 14%) 0px, transparent 50%);
+  }
+
+  .glass {
+    background: hsl(var(--background) / 0.7);
+    backdrop-filter: saturate(180%) blur(12px);
+  }
+
+  .login-gradient {
+    background: linear-gradient(135deg, #7b61ff 0%, #6d4aff 100%);
+  }
+
+  .login-gradient:hover {
+    background: linear-gradient(135deg, #8a72ff 0%, #7a59ff 100%);
+  }
+
+  .hero-mesh {
+    background-color: #2b1766;
+    background-image:
+      radial-gradient(at 18% 22%, rgba(123, 97, 255, 0.35) 0px, transparent 55%),
+      radial-gradient(at 82% 18%, rgba(109, 74, 255, 0.25) 0px, transparent 55%),
+      radial-gradient(at 50% 90%, rgba(75, 50, 180, 0.4) 0px, transparent 60%);
+  }
+}

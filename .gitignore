@@ -1,0 +1,14 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+.env
+.env.local
+.DS_Store
+*.log
+.vercel
+.turbo
+next-env.d.ts
+context.md
+MEMORY.md
