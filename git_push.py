@@ -2,7 +2,7 @@
 import subprocess
 import sys
 
-COMMIT_MESSAGE = "match the same container pattern in all tabs"
+COMMIT_MESSAGE = "fix mobile responsive issue"
 
 def run(cmd):
     print(f"▶ {cmd}")

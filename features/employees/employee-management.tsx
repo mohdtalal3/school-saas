@@ -673,38 +673,44 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
           className="w-full"
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <TabsList>
-              <TabsTrigger value="all" className="gap-2">
+            <TabsList className="w-full sm:w-auto overflow-x-auto">
+              <TabsTrigger value="all" className="gap-2 flex-1 sm:flex-none">
                 <Users className="h-3.5 w-3.5" />
-                All Employees
+                <span className="hidden sm:inline">All Employees</span>
+                <span className="sm:hidden">All</span>
                 <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold">
                   {totalEmployees}
                 </span>
               </TabsTrigger>
               <TabsTrigger value="list" className="gap-2">
                 <Table className="h-3.5 w-3.5" />
-                Basic List
+                <span className="hidden sm:inline">Basic List</span>
+                <span className="sm:hidden">List</span>
               </TabsTrigger>
               <TabsTrigger value="login" className="gap-2">
                 <KeyRound className="h-3.5 w-3.5" />
-                Manage Login
+                <span className="hidden sm:inline">Manage Login</span>
+                <span className="sm:hidden">Login</span>
               </TabsTrigger>
               <TabsTrigger value="offer" className="gap-2">
                 <FileText className="h-3.5 w-3.5" />
-                Job Offer Letter
+                <span className="hidden sm:inline">Job Offer Letter</span>
+                <span className="sm:hidden">Offer</span>
               </TabsTrigger>
               <TabsTrigger value="attachments" className="gap-2">
                 <Paperclip className="h-3.5 w-3.5" />
-                Attachments
+                <span className="hidden sm:inline">Attachments</span>
+                <span className="sm:hidden">Files</span>
               </TabsTrigger>
               <TabsTrigger value="idcards" className="gap-2">
                 <CreditCard className="h-3.5 w-3.5" />
-                ID Cards
+                <span className="hidden sm:inline">ID Cards</span>
+                <span className="sm:hidden">IDs</span>
               </TabsTrigger>
             </TabsList>
 
             {(tab === "all" || tab === "list" || tab === "login") && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {(tab === "all" || tab === "list") && (
                 <div className="inline-flex rounded-md border bg-muted/40 p-0.5">
                   {(["active", "inactive", "all"] as const).map((f) => (
@@ -747,11 +753,11 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
           <TabsContent value="all" className="mt-4">
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base font-medium">
+                <CardTitle className="flex flex-wrap items-center gap-2 text-base font-medium">
                   <Users className="h-4 w-4 text-muted-foreground" />
                   Staff Directory
                   {counts && (
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex flex-wrap items-center gap-1.5">
                       <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600">
                         {counts.active} Active
                       </span>

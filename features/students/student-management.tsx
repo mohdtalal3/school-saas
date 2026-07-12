@@ -856,36 +856,48 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
         transition={{ duration: 0.35 }}
         className="space-y-6"
       >
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Students</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage student admissions, classes, and fees.
-          </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Students</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage student admissions, classes, and fees.
+            </p>
+          </div>
+          {studentTab === "all" && (
+            <Button onClick={openAdd} className="gap-2 shrink-0">
+              <Plus className="h-4 w-4" />
+              Add Student
+            </Button>
+          )}
         </div>
 
         <Tabs value={studentTab} onValueChange={setStudentTab} className="w-full">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <TabsList>
-              <TabsTrigger value="all" className="gap-1.5">
+            <TabsList className="w-full sm:w-auto overflow-x-auto">
+              <TabsTrigger value="all" className="gap-1.5 flex-1 sm:flex-none">
                 <Users className="h-3.5 w-3.5" />
-                All Students
+                <span className="hidden sm:inline">All Students</span>
+                <span className="sm:hidden">All</span>
               </TabsTrigger>
               <TabsTrigger value="list" className="gap-1.5">
                 <Table className="h-3.5 w-3.5" />
-                Basic List
+                <span className="hidden sm:inline">Basic List</span>
+                <span className="sm:hidden">List</span>
               </TabsTrigger>
               <TabsTrigger value="admission" className="gap-1.5">
                 <FileText className="h-3.5 w-3.5" />
-                Admission Letter
+                <span className="hidden sm:inline">Admission Letter</span>
+                <span className="sm:hidden">Letter</span>
               </TabsTrigger>
               <TabsTrigger value="attachments" className="gap-1.5">
                 <Paperclip className="h-3.5 w-3.5" />
-                Attachments
+                <span className="hidden sm:inline">Attachments</span>
+                <span className="sm:hidden">Files</span>
               </TabsTrigger>
             </TabsList>
 
             {(studentTab === "all" || studentTab === "list") && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="inline-flex rounded-md border bg-muted/40 p-0.5">
                   {(["active", "inactive", "all"] as const).map((f) => (
                     <button
@@ -929,12 +941,6 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
                     </button>
                   )}
                 </div>
-                {studentTab === "all" && (
-                  <Button onClick={openAdd} className="gap-2 shrink-0">
-                    <Plus className="h-4 w-4" />
-                    Add Student
-                  </Button>
-                )}
               </div>
             )}
           </div>
@@ -943,11 +949,11 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
           <TabsContent value="all" className="mt-4">
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base font-medium">
+                <CardTitle className="flex flex-wrap items-center gap-2 text-base font-medium">
                   <Users className="h-4 w-4 text-muted-foreground" />
                   Student Directory
                   {counts && (
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex flex-wrap items-center gap-1.5">
                       <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600">
                         {counts.active} Active
                       </span>
@@ -981,7 +987,7 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
                   </div>
                 ) : (
                   <>
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                       <AnimatePresence>
                         {students.map((s) => (
                           <StudentCard
