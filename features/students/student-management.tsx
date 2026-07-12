@@ -67,6 +67,7 @@ import { SearchPicker } from "@/components/ui/search-picker";
 import { useToast } from "@/components/ui/toast";
 import { StudentForm } from "./student-form";
 import { StudentDirectoryTab } from "./student-directory-tab";
+import { AdmissionLetterTab } from "./admission-letter-tab";
 import type { ActiveFilter } from "@/components/ui/directory-table";
 import type {
   Student,
@@ -867,6 +868,10 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
                 <Table className="h-3.5 w-3.5" />
                 Basic List
               </TabsTrigger>
+              <TabsTrigger value="admission" className="gap-1.5">
+                <FileText className="h-3.5 w-3.5" />
+                Admission Letter
+              </TabsTrigger>
               <TabsTrigger value="attachments" className="gap-1.5">
                 <Paperclip className="h-3.5 w-3.5" />
                 Attachments
@@ -1025,6 +1030,11 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
                 />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Admission Letter tab */}
+          <TabsContent value="admission" className="mt-4">
+            <AdmissionLetterTab schoolId={schoolId} />
           </TabsContent>
 
           {/* Attachments tab */}
