@@ -111,6 +111,82 @@ CREATE TABLE employee_attachments (
 );
 ```
 
+### `classes`
+
+Grade/class definitions per school. Stores name, monthly fee, class teacher, and capacity.
+
+```sql
+CREATE TABLE classes (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  school_id     UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  name          TEXT NOT NULL,
+  fee           NUMERIC(12,2) NOT NULL DEFAULT 0,
+  class_teacher TEXT,
+  capacity      INTEGER NOT NULL DEFAULT 50,
+  is_active     BOOLEAN NOT NULL DEFAULT true,
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  updated_at    TIMESTAMPTZ DEFAULT now(),
+  CONSTRAINT unique_school_class_name UNIQUE (school_id, name)
+);
+```
+
+- Boys/girls counts are derived from the `students` table (Phase 2.6 — students now built; counts wired via service layer).
+- Progress bar on the card view shows enrollment (boys + girls) vs `capacity`.
+
+### `students`
+
+Stores student records belonging to a school, with class assignment, fee discount, family info, and photo.
+
+```sql
+CREATE TABLE students (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  school_id       UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  class_id        UUID REFERENCES classes(id) ON DELETE SET NULL,
+  registration_no TEXT,          -- auto-generated STU-0001
+  name            TEXT NOT NULL,
+  photo_url       TEXT,
+  date_of_admission DATE NOT NULL DEFAULT CURRENT_DATE,
+  discount        NUMERIC(12,2) NOT NULL DEFAULT 0,
+  mobile          TEXT,
+  date_of_birth   DATE,
+  gender          TEXT CHECK (gender IS NULL OR gender IN ('male','female','other')),
+  identification_mark TEXT,
+  blood_group     TEXT,
+  disease         TEXT,
+  birth_form_id   TEXT,
+  additional_note TEXT,
+  is_orphan       BOOLEAN NOT NULL DEFAULT false,
+  is_osc          BOOLEAN NOT NULL DEFAULT false,
+  religion        TEXT,
+  family          TEXT,
+  total_siblings  INTEGER NOT NULL DEFAULT 0,
+  address         TEXT,
+  father_name     TEXT,
+  father_nic      TEXT,
+  father_profession TEXT,
+  is_active       BOOLEAN NOT NULL DEFAULT true,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+### `student_attachments`
+
+File attachments for students (birth certificate, CNIC, previous results, etc.).
+
+```sql
+CREATE TABLE student_attachments (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id  UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  storage_key TEXT NOT NULL UNIQUE,
+  mime_type   TEXT NOT NULL,
+  size_bytes  BIGINT NOT NULL,
+  label       TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
 ---
 
 ## Future-Ready Tables (Schema Reserved)
@@ -120,7 +196,7 @@ These tables are **not yet created** but the foreign key relationships and namin
 | Table | FKs | Purpose |
 | --- | --- | --- |
 | `users` | `school_id` | Base user table for students, teachers, parents |
-| `students` | `school_id`, `user_id`, `class_id`, `section_id` | Student records |
+| `students` | `school_id`, `class_id` | Student records (BUILT) |
 | `teachers` | `school_id`, `user_id` | Teacher records |
 | `parents` | `school_id`, `user_id` | Parent/guardian records |
 | `classes` | `school_id` | Grade/class definitions |
@@ -184,6 +260,8 @@ supabase/
     ├── 0001_initial_schema.sql   ✅ Applied — schools + school_admins + updated_at trigger
     ├── 0002_enable_rls.sql        ✅ Applied — RLS + storage policies
     ├── 0003_employees.sql        ✅ Applied — employees + employee_attachments tables
+    ├── 0006_classes.sql          ✅ Applied — classes table (name, fee, teacher, capacity)
+    ├── 0007_students.sql         ✅ Applied — students + student_attachments tables + storage buckets
     └── ...
 ```
 

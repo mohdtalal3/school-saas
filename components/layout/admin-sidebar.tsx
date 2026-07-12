@@ -16,6 +16,8 @@ import {
   LogOut,
   Users,
   ScrollText,
+  BookOpen,
+  GraduationCap as GraduationCapIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -59,6 +61,8 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
 
   const settingsActive = pathname?.startsWith("/school/settings") ?? false;
   const employeesActive = pathname?.startsWith("/school/employees") ?? false;
+  const classesActive = pathname?.startsWith("/school/classes") ?? false;
+  const studentsActive = pathname?.startsWith("/school/students") ?? false;
 
   return (
     <>
@@ -144,6 +148,36 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
           >
             <Users className="h-4 w-4" />
             <span className="flex-1">Employees</span>
+          </Link>
+
+          {/* Classes */}
+          <Link
+            href="/school/classes"
+            onClick={onClose}
+            className={cn(
+              "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+              classesActive
+                ? "bg-sidebar-accent text-white"
+                : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white"
+            )}
+          >
+            <BookOpen className="h-4 w-4" />
+            <span className="flex-1">Classes</span>
+          </Link>
+
+          {/* Students */}
+          <Link
+            href="/school/students"
+            onClick={onClose}
+            className={cn(
+              "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+              studentsActive
+                ? "bg-sidebar-accent text-white"
+                : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white"
+            )}
+          >
+            <GraduationCapIcon className="h-4 w-4" />
+            <span className="flex-1">Students</span>
           </Link>
 
           {/* General Settings — collapsible group */}

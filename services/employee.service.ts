@@ -3,6 +3,7 @@ import { createSupabaseService } from "@/lib/supabase";
 import type { Employee, NewEmployee, UpdateEmployee } from "@/types/school.types";
 import { NotFoundError } from "@/lib/api-response";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PaginatedResult, PaginationParams } from "@/services/student.service";
 
 const SALT_ROUNDS = 10;
 
@@ -21,18 +22,36 @@ function buildEmployee(data: Record<string, unknown>): Employee {
 
 // ── Read all ────────────────────────────────────────────────────────────────────
 
-export async function getEmployees(schoolId: string): Promise<Employee[]> {
+export async function getEmployees(
+  schoolId: string,
+  params: PaginationParams = {}
+): Promise<PaginatedResult<Employee>> {
   const supabase: SupabaseClient = createSupabaseService();
+  const page = Math.max(1, params.page ?? 1);
+  const limit = Math.max(1, params.limit ?? 25);
+  const offset = (page - 1) * limit;
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("employees")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("school_id", schoolId)
-    .eq("is_active", true)
-    .order("created_at", { ascending: false });
+    .eq("is_active", true);
+
+  if (params.search?.trim()) {
+    const q = params.search.trim();
+    query = query.or(
+      `name.ilike.%${q}%,role.ilike.%${q}%,employee_code.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,cnic.ilike.%${q}%`
+    );
+  }
+
+  query = query
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  const { data, error, count } = await query;
 
   if (error) throw new Error(`Failed to fetch employees: ${error.message}`);
-  return (data ?? []) as unknown as Employee[];
+  return { data: (data ?? []) as unknown as Employee[], total: count ?? 0 };
 }
 
 export async function getEmployeeById(

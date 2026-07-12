@@ -17,10 +17,11 @@ export async function GET(req: Request) {
     const idsParam = searchParams.get("ids");
     const download = searchParams.get("download") === "1";
 
-    const [allEmployees, school] = await Promise.all([
-      getEmployees(session.schoolId),
+    const [empResult, school] = await Promise.all([
+      getEmployees(session.schoolId, { limit: 1000 }),
       getSchoolById(session.schoolId),
     ]);
+    const allEmployees = empResult.data;
 
     const ids = idsParam ? idsParam.split(",").filter(Boolean) : null;
     const employees = ids

@@ -84,3 +84,100 @@ export interface NewEmployeeAttachment {
   size_bytes: number;
   label: string;
 }
+
+// ── Classes ───────────────────────────────────────────────────
+
+export interface SchoolClass {
+  id: string;
+  school_id: string;
+  name: string;
+  fee: number;
+  class_teacher: string | null;
+  capacity: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type NewClass = Omit<
+  SchoolClass,
+  "id" | "school_id" | "created_at" | "updated_at" | "is_active"
+>;
+
+export type UpdateClass = Partial<
+  Omit<SchoolClass, "id" | "school_id" | "created_at" | "updated_at">
+>;
+
+export interface ClassWithStats extends SchoolClass {
+  boys: number;
+  girls: number;
+  total_students: number;
+}
+
+// ── Students ──────────────────────────────────────────────────
+
+export interface Student {
+  id: string;
+  school_id: string;
+  class_id: string | null;
+  registration_no: string | null;
+  name: string;
+  photo_url: string | null;
+  date_of_admission: string;
+  discount: number;
+  mobile: string | null;
+  date_of_birth: string | null;
+  gender: string | null;
+  identification_mark: string | null;
+  blood_group: string | null;
+  disease: string | null;
+  birth_form_id: string | null;
+  additional_note: string | null;
+  is_orphan: boolean;
+  is_osc: boolean;
+  religion: string | null;
+  family: string | null;
+  total_siblings: number;
+  address: string | null;
+  father_name: string | null;
+  father_nic: string | null;
+  father_profession: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type NewStudent = Omit<
+  Student,
+  "id" | "school_id" | "created_at" | "updated_at" | "is_active" | "photo_url"
+> & { photo_url?: string | null; registration_no?: string | null };
+
+export type UpdateStudent = Partial<
+  Omit<Student, "id" | "school_id" | "registration_no" | "created_at" | "updated_at">
+>;
+
+export interface StudentWithClass extends Student {
+  class_name: string | null;
+  class_fee: number | null;
+}
+
+// ── Student Attachments ───────────────────────────────────────
+
+export interface StudentAttachment {
+  id: string;
+  student_id: string;
+  name: string;
+  storage_key: string;
+  mime_type: string;
+  size_bytes: number;
+  label: string;
+  created_at: string;
+}
+
+export interface NewStudentAttachment {
+  name: string;
+  storage_key: string;
+  mime_type: string;
+  size_bytes: number;
+  label: string;
+}

@@ -38,6 +38,8 @@ A single Next.js 15 (App Router) application that hosts:
 │                │   settings.service.ts        │          │
 │                │   auth.service.ts            │          │
 │                │   employee.service.ts        │          │
+│                │   class.service.ts           │          │
+│                │   student.service.ts         │          │
 │                └──────────────┬───────────────┘          │
 └───────────────────────────────┼──────────────────────────┘
                                 │  Supabase JS SDK
@@ -48,6 +50,9 @@ A single Next.js 15 (App Router) application that hosts:
                   │   - school_admins          │
                   │   - employees              │
                   │   - employee_attachments   │
+                  │   - classes                │
+                  │   - students               │
+                  │   - student_attachments    │
                   │   - RLS enabled            │
                   │   - Storage (logos, photos) │
                   └────────────────────────────┘

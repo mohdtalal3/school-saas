@@ -26,7 +26,7 @@ const NewEmployeeSchema = z.object({
 });
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
   const { schoolId } = await params;
@@ -35,8 +35,13 @@ export async function GET(
     if (!(session?.role === "admin" && session.schoolId === schoolId)) {
       return NextResponse.json(error("Unauthorized"), { status: 401 });
     }
-    const data = await getEmployees(schoolId);
-    return NextResponse.json(success(data));
+    const url = new URL(req.url);
+    const page = parseInt(url.searchParams.get("page") ?? "1", 10);
+    const limit = parseInt(url.searchParams.get("limit") ?? "25", 10);
+    const search = url.searchParams.get("search") ?? undefined;
+
+    const result = await getEmployees(schoolId, { page, limit, search });
+    return NextResponse.json(success(result));
   } catch (e) {
     return NextResponse.json(
       error(e instanceof Error ? e.message : "Failed to fetch employees"),

@@ -4,20 +4,15 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Paperclip,
-  Search,
-  Loader2,
   FileText,
   Image,
   File,
   Download,
   Trash2,
-  Users,
   Plus,
-  X,
   Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -36,9 +31,26 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SearchPicker } from "@/components/ui/search-picker";
 import { useToast } from "@/components/ui/toast";
 import type { Employee, EmployeeAttachment } from "@/types/school.types";
 import { getInitials } from "@/lib/utils";
+
+async function searchEmployees(
+  schoolId: string,
+  query: string
+): Promise<{ id: string; name: string; photo_url?: string | null; subtitle?: string }[]> {
+  const qs = new URLSearchParams({ page: "1", limit: "20", search: query });
+  const res = await fetch(`/api/employees/${schoolId}?${qs}`);
+  const json = await res.json();
+  if (!res.ok || !json.success) throw new Error(json.error || "Failed to load");
+  return (json.data.data as Employee[]).map((e) => ({
+    id: e.id,
+    name: e.name,
+    photo_url: e.photo_url,
+    subtitle: `${e.role}${e.employee_code ? ` · ${e.employee_code}` : ""}`,
+  }));
+}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -54,7 +66,7 @@ function FileIcon({ mimeType }: { mimeType: string }) {
   return <File className="h-4 w-4 text-muted-foreground" />;
 }
 
-// ── Upload dialog ────────────────────────────────────────────────────────────────
+// ── Upload dialog───────────────────────────────────────────────────────────────
 
 function UploadDialog({
   open,
@@ -71,11 +83,9 @@ function UploadDialog({
 }) {
   const { toast } = useToast();
   const fileRef = React.useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = React.useState(false);
   const [label, setLabel] = React.useState("CV / Resume");
 
   async function handleUpload(file: File) {
-    setUploading(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
@@ -94,8 +104,6 @@ function UploadDialog({
         description: e instanceof Error ? e.message : "Try again",
         variant: "destructive",
       });
-    } finally {
-      setUploading(false);
     }
   }
 
@@ -193,23 +201,13 @@ interface Props {
 
 export function AttachmentsTab({ schoolId }: Props) {
   const { toast } = useToast();
-  const [search, setSearch] = React.useState("");
-  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = React.useState<Employee | null>(null);
   const [uploadFor, setUploadFor] = React.useState<{
     id: string;
     name: string;
   } | null>(null);
 
-  // All employees
-  const { data: employees = [], isLoading } = useQuery<Employee[]>({
-    queryKey: ["employees", schoolId],
-    queryFn: async () => {
-      const res = await fetch(`/api/employees/${schoolId}`);
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-      return json.data;
-    },
-  });
+  const selectedId = selectedEmployee?.id ?? null;
 
   // Attachments for selected employee
   const { data: attachments = [], refetch } = useQuery<EmployeeAttachment[]>({
@@ -224,8 +222,6 @@ export function AttachmentsTab({ schoolId }: Props) {
     },
     enabled: !!selectedId,
   });
-
-  const selectedEmployee = employees.find((e) => e.id === selectedId);
 
   async function deleteFile(att: EmployeeAttachment) {
     try {
@@ -246,204 +242,139 @@ export function AttachmentsTab({ schoolId }: Props) {
     }
   }
 
-  const filtered = employees.filter(
-    (e) =>
-      !search.trim() ||
-      e.name.toLowerCase().includes(search.toLowerCase()) ||
-      e.role.toLowerCase().includes(search.toLowerCase()) ||
-      e.employee_code?.toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      {/* Left: employee list */}
-      <div className="lg:col-span-1">
-        <Card className="h-fit">
+    <div className="space-y-6">
+      {/* Search bar */}
+      <div className="mx-auto max-w-2xl">
+        <SearchPicker
+          placeholder="Type at least 3 letters to search employees..."
+          searchFn={(q) => searchEmployees(schoolId, q)}
+          queryKey={(q) => ["employees-search", schoolId, q] as const}
+          emptyHint={{
+            icon: <Paperclip className="h-7 w-7 text-muted-foreground" />,
+            title: "Search for an employee",
+            description: "Type at least 3 letters of their name, role, or code. Then click to view and manage their documents.",
+          }}
+          onSelect={(item) =>
+            setSelectedEmployee({
+              id: item.id,
+              name: item.name,
+              photo_url: item.photo_url ?? null,
+            } as Employee)
+          }
+        />
+      </div>
+
+      {/* Attachments panel */}
+      {selectedEmployee ? (
+        <Card className="mx-auto max-w-3xl">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-medium">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              Employees
-            </CardTitle>
-            <div className="relative mt-2">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search employee..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 pr-8"
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  {selectedEmployee.photo_url && (
+                    <AvatarImage
+                      src={selectedEmployee.photo_url}
+                      alt={selectedEmployee.name}
+                    />
+                  )}
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                    {getInitials(selectedEmployee.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <CardTitle className="text-base font-medium">
+                    {selectedEmployee.name}
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedEmployee.role} &middot; {selectedEmployee.employee_code}
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                className="gap-1.5"
+                onClick={() =>
+                  setUploadFor({ id: selectedEmployee.id, name: selectedEmployee.name })
+                }
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add File
+              </Button>
             </div>
           </CardHeader>
-          <CardContent className="max-h-[60vh] space-y-1 overflow-y-auto p-0 pb-3">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : filtered.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                {search ? "No employees found" : "No employees yet"}
-              </p>
-            ) : (
-              filtered.map((emp) => (
-                <button
-                  key={emp.id}
-                  onClick={() => setSelectedId(emp.id)}
-                  className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-muted/60 ${
-                    selectedId === emp.id ? "bg-primary/5" : ""
-                  }`}
+          <CardContent>
+            {attachments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <Paperclip className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <p className="font-medium">No documents attached</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Attach CV, certificates, or other documents for this employee.
+                </p>
+                <Button
+                  variant="outline"
+                  className="mt-4 gap-2"
+                  onClick={() =>
+                    setUploadFor({
+                      id: selectedEmployee.id,
+                      name: selectedEmployee.name,
+                    })
+                  }
                 >
-                  <Avatar className="h-8 w-8">
-                    {emp.photo_url && (
-                      <AvatarImage src={emp.photo_url} alt={emp.name} />
-                    )}
-                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                      {getInitials(emp.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{emp.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {emp.role}
-                    </p>
+                  <Plus className="h-4 w-4" />
+                  Attach Document
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {attachments.map((att) => (
+                  <div
+                    key={att.id}
+                    className="flex items-center gap-3 rounded-lg border px-4 py-3"
+                  >
+                    <FileIcon mimeType={att.mime_type} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">{att.label}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {att.name} · {formatBytes(att.size_bytes)} ·{" "}
+                        {new Date(att.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        title="Download"
+                        asChild
+                      >
+                        <a
+                          href={`/api/employees/${schoolId}/${selectedEmployee.id}/attachments/${att.id}/download`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                        </a>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive/70 hover:text-destructive"
+                        title="Remove"
+                        onClick={() => deleteFile(att)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                </button>
-              ))
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
-      </div>
-
-      {/* Right: attachments panel */}
-      <div className="lg:col-span-2">
-        {selectedEmployee ? (
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    {selectedEmployee.photo_url && (
-                      <AvatarImage
-                        src={selectedEmployee.photo_url}
-                        alt={selectedEmployee.name}
-                      />
-                    )}
-                    <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                      {getInitials(selectedEmployee.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <CardTitle className="text-base font-medium">
-                      {selectedEmployee.name}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedEmployee.role} &middot; {selectedEmployee.employee_code}
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() =>
-                    setUploadFor({ id: selectedEmployee.id, name: selectedEmployee.name })
-                  }
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add File
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {attachments.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                    <Paperclip className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <p className="font-medium">No documents attached</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Attach CV, certificates, or other documents for this employee.
-                  </p>
-                  <Button
-                    variant="outline"
-                    className="mt-4 gap-2"
-                    onClick={() =>
-                      setUploadFor({
-                        id: selectedEmployee.id,
-                        name: selectedEmployee.name,
-                      })
-                    }
-                  >
-                    <Plus className="h-4 w-4" />
-                    Attach Document
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {attachments.map((att) => (
-                    <div
-                      key={att.id}
-                      className="flex items-center gap-3 rounded-lg border px-4 py-3"
-                    >
-                      <FileIcon mimeType={att.mime_type} />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">{att.label}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {att.name} · {formatBytes(att.size_bytes)} ·{" "}
-                          {new Date(att.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          title="Download"
-                          asChild
-                        >
-                          <a
-                            href={`/api/employees/${schoolId}/${selectedEmployee.id}/attachments/${att.id}/download`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                          </a>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-destructive/70 hover:text-destructive"
-                          title="Remove"
-                          onClick={() => deleteFile(att)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="flex h-full min-h-48 flex-col items-center justify-center text-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-              <Paperclip className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <p className="font-medium">Select an employee</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Choose an employee from the list to view and manage their documents.
-            </p>
-          </Card>
-        )}
-      </div>
+      ) : null}
 
       {/* Upload dialog */}
       {uploadFor && (

@@ -25,6 +25,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Pagination } from "@/components/ui/pagination";
+import { useServerPagination } from "@/lib/use-server-pagination";
 import {
   Dialog,
   DialogContent,
@@ -39,11 +41,19 @@ import { getInitials } from "@/lib/utils";
 
 // ── API helpers ────────────────────────────────────────────────────────────────
 
-async function fetchEmployees(schoolId: string): Promise<Employee[]> {
-  const res = await fetch(`/api/employees/${schoolId}`);
-  const data = await res.json();
-  if (!res.ok || !data.success) throw new Error(data.error || "Failed to load");
-  return data.data;
+async function fetchEmployees(
+  schoolId: string,
+  params: { page: number; limit: number; search: string }
+): Promise<{ data: Employee[]; total: number }> {
+  const qs = new URLSearchParams({
+    page: String(params.page),
+    limit: String(params.limit),
+  });
+  if (params.search) qs.set("search", params.search);
+  const res = await fetch(`/api/employees/${schoolId}?${qs}`);
+  const json = await res.json();
+  if (!res.ok || !json.success) throw new Error(json.error || "Failed to load");
+  return json.data;
 }
 
 interface CredentialsPayload {
@@ -386,13 +396,21 @@ function EditCredentialsDialog({
 export function ManageLoginTab({ schoolId }: { schoolId: string }) {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const [search, setSearch] = React.useState("");
   const [editing, setEditing] = React.useState<Employee | null>(null);
+  const { page, pageSize, search, setPage, setSearch, handlePageSizeChange } = useServerPagination();
 
-  const { data: employees = [], isLoading } = useQuery({
-    queryKey: ["employees", schoolId],
-    queryFn: () => fetchEmployees(schoolId),
+  const [debouncedSearch, setDebouncedSearch] = React.useState("");
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["employees", schoolId, page, pageSize, debouncedSearch],
+    queryFn: () => fetchEmployees(schoolId, { page, limit: pageSize, search: debouncedSearch }),
   });
+  const employees = data?.data ?? [];
+  const totalEmployees = data?.total ?? 0;
 
   const toggleMutation = useMutation({
     mutationFn: (emp: Employee) =>
@@ -419,17 +437,7 @@ export function ManageLoginTab({ schoolId }: { schoolId: string }) {
     },
   });
 
-  const filtered = React.useMemo(() => {
-    if (!search.trim()) return employees;
-    const q = search.toLowerCase();
-    return employees.filter(
-      (e) =>
-        e.name.toLowerCase().includes(q) ||
-        e.role.toLowerCase().includes(q) ||
-        e.login_username.toLowerCase().includes(q) ||
-        e.employee_code?.toLowerCase().includes(q)
-    );
-  }, [employees, search]);
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -450,10 +458,7 @@ export function ManageLoginTab({ schoolId }: { schoolId: string }) {
               <KeyRound className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-base font-medium">Manage Employee Logins</h3>
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                {filtered.length}
-                {search && filtered.length !== employees.length
-                  ? `/${employees.length}`
-                  : ""}
+                {totalEmployees}
               </span>
             </div>
             <div className="relative w-full sm:w-80">
@@ -479,7 +484,7 @@ export function ManageLoginTab({ schoolId }: { schoolId: string }) {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : filtered.length === 0 ? (
+          ) : employees.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
                 <Users className="h-7 w-7 text-muted-foreground" />
@@ -497,7 +502,7 @@ export function ManageLoginTab({ schoolId }: { schoolId: string }) {
             <>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                 <AnimatePresence>
-                  {filtered.map((emp) => (
+                  {employees.map((emp) => (
                     <LoginCard
                       key={emp.id}
                       employee={emp}
@@ -511,11 +516,15 @@ export function ManageLoginTab({ schoolId }: { schoolId: string }) {
                   ))}
                 </AnimatePresence>
               </div>
-              {search && filtered.length > 0 && (
-                <p className="mt-4 text-center text-xs text-muted-foreground">
-                  Showing {filtered.length} of {employees.length} employees
-                </p>
-              )}
+              <div className="mt-4">
+                <Pagination
+                  page={page}
+                  pageSize={pageSize}
+                  total={totalEmployees}
+                  onPageChange={setPage}
+                  onPageSizeChange={handlePageSizeChange}
+                />
+              </div>
             </>
           )}
         </CardContent>

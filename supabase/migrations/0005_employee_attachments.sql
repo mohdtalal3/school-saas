@@ -35,6 +35,7 @@ CREATE INDEX IF NOT EXISTS idx_employee_attachments_employee_id
 ALTER TABLE employee_attachments ENABLE ROW LEVEL SECURITY;
 
 -- Schools can manage their own employees' attachments
+DROP POLICY IF EXISTS "Schools manage own employee attachments" ON employee_attachments;
 CREATE POLICY "Schools manage own employee attachments"
   ON employee_attachments
   FOR ALL
@@ -48,14 +49,17 @@ CREATE POLICY "Schools manage own employee attachments"
   );
 
 -- Storage policies
+DROP POLICY IF EXISTS "Anyone can view employee attachments" ON storage.objects;
 CREATE POLICY "Anyone can view employee attachments"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'employee-attachments');
 
+DROP POLICY IF EXISTS "Schools can upload employee attachments" ON storage.objects;
 CREATE POLICY "Schools can upload employee attachments"
   ON storage.objects FOR INSERT
   WITH CHECK (bucket_id = 'employee-attachments');
 
+DROP POLICY IF EXISTS "Schools can delete employee attachments" ON storage.objects;
 CREATE POLICY "Schools can delete employee attachments"
   ON storage.objects FOR DELETE
   USING (bucket_id = 'employee-attachments');

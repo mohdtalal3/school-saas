@@ -22,10 +22,12 @@ export default async function IdCardsPage({ searchParams }: PageProps) {
 
   let employees, school;
   try {
-    [employees, school] = await Promise.all([
-      getEmployees(session.schoolId),
+    const [empResult, schoolResult] = await Promise.all([
+      getEmployees(session.schoolId, { limit: 1000 }),
       getSchoolById(session.schoolId),
     ]);
+    employees = empResult.data;
+    school = schoolResult;
   } catch {
     notFound();
   }

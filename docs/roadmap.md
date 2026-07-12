@@ -63,17 +63,27 @@
 - ✅ 2-page layout: employee particulars + terms of employment
 - ✅ Signature blocks, acceptance callout, rules & regulations
 
-### 2.5 Classes & Sections (PENDING)
+### 2.5 Classes & Sections (IN PROGRESS)
 
-- CRUD for classes and sections.
-- Assign section teachers.
+- ✅ Class CRUD (create, list, edit, delete) — card view with boys/girls counts, progress bar
+- ✅ Class fields: name, monthly fee, class teacher, capacity
+- ✅ Empty state prompts to create first class
+- ⏳ Sections CRUD (assign section teachers)
+- ⏳ Assign subjects to classes
 
-### 2.6 Students (PENDING)
+### 2.6 Students (IN PROGRESS)
 
-- Student CRUD (import / export CSV).
-- Profile photo upload (Supabase Storage).
-- Assign to class/section.
-- Parent linkage.
+- ✅ Student CRUD (create, list, edit, delete, view) — card grid view with photo, class, fee
+- ✅ Student fields: name, photo, registration no (auto), date of admission, class dropdown, discount, mobile, DOB, gender, identification mark, blood group, disease, birth form ID, additional note, orphan, OSC, religion, family, total siblings, address, father info
+- ✅ Class dropdown loads from classes API (fee shown, net fee calculated)
+- ✅ Photo upload via Supabase Storage (student-photos bucket)
+- ✅ Student attachments (birth certificate, CNIC, results, etc.) — student-attachments bucket
+- ✅ Search by name, registration no, father name, mobile
+- ✅ Filter by class
+- ✅ View details dialog with all fields
+- ⏳ CSV import / export
+- ⏳ Parent linkage
+- ⏳ Assign to section
 
 ### 2.7 Teachers (PENDING)
 
