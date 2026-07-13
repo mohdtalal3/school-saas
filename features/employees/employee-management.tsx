@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
@@ -28,12 +29,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -406,7 +401,8 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
   const { toast } = useToast();
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [tab, setTab] = React.useState<"all" | "list" | "login" | "offer" | "attachments" | "idcards">("all");
+  const searchParams = useSearchParams();
+  const tab = searchParams.get("tab") ?? "all";
   const { page, pageSize, search, setPage, setSearch, handlePageSizeChange } = useServerPagination();
   const [mode, setMode] = React.useState<DialogMode | null>(null);
   const [selected, setSelected] = React.useState<Employee | null>(null);
@@ -452,7 +448,6 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
       setSelected(null);
       setCredentials(result);
       setShowCredentials(true);
-      setTab("all");
       toast({
         title: "Employee added",
         description: `Employee code: ${result.employee.employee_code}`,
@@ -661,225 +656,184 @@ export function EmployeeManagement({ schoolId }: EmployeeManagementProps) {
               Manage your school&apos;s staff members and their login credentials.
             </p>
           </div>
-          <Button onClick={openAdd} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Employee
-          </Button>
+          {tab === "all" && (
+            <Button onClick={openAdd} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Employee
+            </Button>
+          )}
         </div>
 
-        <Tabs
-          value={tab}
-          onValueChange={(v) => setTab(v as "all" | "login" | "offer" | "attachments" | "idcards")}
-          className="w-full"
-        >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <TabsList className="w-full sm:w-auto overflow-x-auto">
-              <TabsTrigger value="all" className="gap-2 flex-1 sm:flex-none">
-                <Users className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">All Employees</span>
-                <span className="sm:hidden">All</span>
-                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold">
+        {/* Filter bar — shared for all/list/login tabs */}
+        {(tab === "all" || tab === "list" || tab === "login") && (
+          <div className="flex flex-wrap items-center gap-2">
+            {(tab === "all" || tab === "list") && (
+            <div className="inline-flex rounded-md border bg-muted/40 p-0.5">
+              {(["active", "inactive", "all"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => { setEmpActiveFilter(f); setPage(1); }}
+                  className={`rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
+                    empActiveFilter === f
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {f === "all" ? "All" : f}
+                </button>
+              ))}
+            </div>
+            )}
+            <div className="relative w-full sm:w-64">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search name, role, code, phone, CNIC..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 pr-8"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── All Employees tab (grid view) ── */}
+        {tab === "all" && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex flex-wrap items-center gap-2 text-base font-medium">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                Staff Directory
+                {counts && (
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600">
+                      {counts.active} Active
+                    </span>
+                    <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600">
+                      {counts.inactive} Inactive
+                    </span>
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                      {counts.total} Total
+                    </span>
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : employees.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+                    <Users className="h-7 w-7 text-muted-foreground" />
+                  </div>
+                  <p className="font-medium">
+                    {search ? "No employees found" : "No employees yet"}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {search
+                      ? `No results for "${search}"`
+                      : "Add your first employee to get started."}
+                  </p>
+                  {!search && (
+                    <Button
+                      variant="outline"
+                      className="mt-4 gap-2"
+                      onClick={openAdd}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Employee
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                    <AnimatePresence>
+                      {employees.map((employee) => (
+                        <EmployeeCard
+                          key={employee.id}
+                          employee={employee}
+                          onEdit={openEdit}
+                          onView={openView}
+                          onDelete={openDelete}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                  <div className="mt-4">
+                    <Pagination
+                      page={page}
+                      pageSize={pageSize}
+                      total={totalEmployees}
+                      onPageChange={setPage}
+                      onPageSizeChange={handlePageSizeChange}
+                    />
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── Basic List tab ── */}
+        {tab === "list" && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-medium">
+                <Table className="h-4 w-4 text-muted-foreground" />
+                Employee List
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                   {totalEmployees}
                 </span>
-              </TabsTrigger>
-              <TabsTrigger value="list" className="gap-2">
-                <Table className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Basic List</span>
-                <span className="sm:hidden">List</span>
-              </TabsTrigger>
-              <TabsTrigger value="login" className="gap-2">
-                <KeyRound className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Manage Login</span>
-                <span className="sm:hidden">Login</span>
-              </TabsTrigger>
-              <TabsTrigger value="offer" className="gap-2">
-                <FileText className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Job Offer Letter</span>
-                <span className="sm:hidden">Offer</span>
-              </TabsTrigger>
-              <TabsTrigger value="attachments" className="gap-2">
-                <Paperclip className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Attachments</span>
-                <span className="sm:hidden">Files</span>
-              </TabsTrigger>
-              <TabsTrigger value="idcards" className="gap-2">
-                <CreditCard className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">ID Cards</span>
-                <span className="sm:hidden">IDs</span>
-              </TabsTrigger>
-            </TabsList>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <EmployeeDirectoryTab
+                schoolId={schoolId}
+                controlledSearch={search}
+                controlledSetSearch={setSearch}
+                controlledActiveFilter={empActiveFilter}
+                controlledSetActiveFilter={setEmpActiveFilter}
+                hideFilterBar
+              />
+            </CardContent>
+          </Card>
+        )}
 
-            {(tab === "all" || tab === "list" || tab === "login") && (
-              <div className="flex flex-wrap items-center gap-2">
-                {(tab === "all" || tab === "list") && (
-                <div className="inline-flex rounded-md border bg-muted/40 p-0.5">
-                  {(["active", "inactive", "all"] as const).map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => { setEmpActiveFilter(f); setPage(1); }}
-                      className={`rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
-                        empActiveFilter === f
-                          ? "bg-background text-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {f === "all" ? "All" : f}
-                    </button>
-                  ))}
-                </div>
-                )}
-                <div className="relative w-full sm:w-64">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search name, role, code, phone, CNIC..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 pr-8"
-                  />
-                  {search && (
-                    <button
-                      onClick={() => setSearch("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+        {/* ── Manage Login tab ── */}
+        {tab === "login" && (
+          <ManageLoginTab
+            schoolId={schoolId}
+            controlledSearch={search}
+            controlledSetSearch={setSearch}
+            hideSearchBar
+          />
+        )}
 
-          {/* ── All Employees tab (grid view) ── */}
-          <TabsContent value="all" className="mt-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex flex-wrap items-center gap-2 text-base font-medium">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  Staff Directory
-                  {counts && (
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600">
-                        {counts.active} Active
-                      </span>
-                      <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600">
-                        {counts.inactive} Inactive
-                      </span>
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                        {counts.total} Total
-                      </span>
-                    </span>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : employees.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
-                      <Users className="h-7 w-7 text-muted-foreground" />
-                    </div>
-                    <p className="font-medium">
-                      {search ? "No employees found" : "No employees yet"}
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {search
-                        ? `No results for "${search}"`
-                        : "Add your first employee to get started."}
-                    </p>
-                    {!search && (
-                      <Button
-                        variant="outline"
-                        className="mt-4 gap-2"
-                        onClick={openAdd}
-                      >
-                        <Plus className="h-4 w-4" />
-                        Add Employee
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                      <AnimatePresence>
-                        {employees.map((employee) => (
-                          <EmployeeCard
-                            key={employee.id}
-                            employee={employee}
-                            onEdit={openEdit}
-                            onView={openView}
-                            onDelete={openDelete}
-                          />
-                        ))}
-                      </AnimatePresence>
-                    </div>
-                    <div className="mt-4">
-                      <Pagination
-                        page={page}
-                        pageSize={pageSize}
-                        total={totalEmployees}
-                        onPageChange={setPage}
-                        onPageSizeChange={handlePageSizeChange}
-                      />
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+        {/* ── Job Offer Letter tab ── */}
+        {tab === "offer" && (
+          <JobOfferTab schoolId={schoolId} />
+        )}
 
-          {/* ── Basic List tab ── */}
-          <TabsContent value="list" className="mt-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base font-medium">
-                  <Table className="h-4 w-4 text-muted-foreground" />
-                  Employee List
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                    {totalEmployees}
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <EmployeeDirectoryTab
-                  schoolId={schoolId}
-                  controlledSearch={search}
-                  controlledSetSearch={setSearch}
-                  controlledActiveFilter={empActiveFilter}
-                  controlledSetActiveFilter={setEmpActiveFilter}
-                  hideFilterBar
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
+        {/* ── Attachments tab ── */}
+        {tab === "attachments" && (
+          <AttachmentsTab schoolId={schoolId} />
+        )}
 
-          {/* ── Manage Login tab ── */}
-          <TabsContent value="login" className="mt-4">
-            <ManageLoginTab
-              schoolId={schoolId}
-              controlledSearch={search}
-              controlledSetSearch={setSearch}
-              hideSearchBar
-            />
-          </TabsContent>
-
-          {/* ── Job Offer Letter tab ── */}
-          <TabsContent value="offer" className="mt-4">
-            <JobOfferTab schoolId={schoolId} />
-          </TabsContent>
-
-          {/* ── Attachments tab ── */}
-          <TabsContent value="attachments" className="mt-4">
-            <AttachmentsTab schoolId={schoolId} />
-          </TabsContent>
-
-          {/* ── ID Cards tab ── */}
-          <TabsContent value="idcards" className="mt-4">
-            <IdCardsTab schoolId={schoolId} />
-          </TabsContent>
-        </Tabs>
+        {/* ── ID Cards tab ── */}
+        {tab === "idcards" && (
+          <IdCardsTab schoolId={schoolId} />
+        )}
       </motion.div>
     </>
   );

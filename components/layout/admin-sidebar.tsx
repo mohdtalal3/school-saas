@@ -18,14 +18,26 @@ import {
   ScrollText,
   BookOpen,
   GraduationCap as GraduationCapIcon,
+  Table,
+  KeyRound,
+  FileText,
+  Paperclip,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useSearchParams } from "next/navigation";
 
 interface SidebarItem {
   href: string;
   label: string;
   icon: React.ElementType;
+}
+
+interface SidebarSubItem {
+  label: string;
+  icon: React.ElementType;
+  tab: string;
 }
 
 const baseItems: SidebarItem[] = [
@@ -38,6 +50,22 @@ const settingsItems: SidebarItem[] = [
   { href: "/school/settings/account-settings", label: "Account Settings", icon: UserCog },
 ];
 
+const studentSubItems: SidebarSubItem[] = [
+  { label: "All Students", icon: Users, tab: "all" },
+  { label: "Basic List", icon: Table, tab: "list" },
+  { label: "Admission Letter", icon: FileText, tab: "admission" },
+  { label: "Attachments", icon: Paperclip, tab: "attachments" },
+];
+
+const employeeSubItems: SidebarSubItem[] = [
+  { label: "All Employees", icon: Users, tab: "all" },
+  { label: "Basic List", icon: Table, tab: "list" },
+  { label: "Manage Login", icon: KeyRound, tab: "login" },
+  { label: "Job Offer Letter", icon: FileText, tab: "offer" },
+  { label: "Attachments", icon: Paperclip, tab: "attachments" },
+  { label: "ID Cards", icon: CreditCard, tab: "idcards" },
+];
+
 interface AdminSidebarProps {
   open: boolean;
   onClose: () => void;
@@ -47,16 +75,26 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentTab = searchParams.get("tab");
 
-  // Keep the Settings group open by default when you're already inside it,
+  // Keep groups open by default when you're already inside them,
   // so the active sub-item is visible on initial load.
   const [settingsOpen, setSettingsOpen] = React.useState(
     pathname?.startsWith("/school/settings") ?? false
   );
+  const [studentsOpen, setStudentsOpen] = React.useState(
+    pathname?.startsWith("/school/students") ?? false
+  );
+  const [employeesOpen, setEmployeesOpen] = React.useState(
+    pathname?.startsWith("/school/employees") ?? false
+  );
 
   React.useEffect(() => {
-    // Auto-expand if you navigate into a settings sub-page elsewhere.
+    // Auto-expand if you navigate into a sub-page elsewhere.
     if (pathname?.startsWith("/school/settings")) setSettingsOpen(true);
+    if (pathname?.startsWith("/school/students")) setStudentsOpen(true);
+    if (pathname?.startsWith("/school/employees")) setEmployeesOpen(true);
   }, [pathname]);
 
   const settingsActive = pathname?.startsWith("/school/settings") ?? false;
@@ -135,20 +173,66 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
             );
           })}
 
-          {/* Employees — single button (all employee management consolidated on one page) */}
-          <Link
-            href="/school/employees"
-            onClick={onClose}
+          {/* Employees — collapsible group */}
+          <button
+            type="button"
+            onClick={() => setEmployeesOpen((v) => !v)}
+            aria-expanded={employeesOpen}
+            aria-controls="employees-group"
             className={cn(
-              "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+              "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
               employeesActive
                 ? "bg-sidebar-accent text-white"
                 : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white"
             )}
           >
             <Users className="h-4 w-4" />
-            <span className="flex-1">Employees</span>
-          </Link>
+            <span className="flex-1 text-left">Employees</span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 transition-transform duration-200",
+                employeesOpen ? "rotate-180" : "rotate-0"
+              )}
+            />
+          </button>
+
+          <AnimatePresence initial={false}>
+            {employeesOpen && (
+              <motion.div
+                id="employees-group"
+                key="employees-group"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: "easeInOut" }}
+                className="overflow-hidden"
+              >
+                <div className="space-y-1 ml-2 mt-1 border-l border-sidebar-border/60 pl-2 pb-1">
+                  {employeeSubItems.map((item) => {
+                    const active = employeesActive && (currentTab === item.tab || (!currentTab && item.tab === "all"));
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.tab}
+                        href={`/school/employees?tab=${item.tab}`}
+                        onClick={onClose}
+                        className={cn(
+                          "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                          active
+                            ? "bg-sidebar-accent text-white"
+                            : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white"
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span className="flex-1">{item.label}</span>
+                        {active && <ChevronRight className="h-4 w-4" />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Classes */}
           <Link
@@ -165,20 +249,66 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
             <span className="flex-1">Classes</span>
           </Link>
 
-          {/* Students */}
-          <Link
-            href="/school/students"
-            onClick={onClose}
+          {/* Students — collapsible group */}
+          <button
+            type="button"
+            onClick={() => setStudentsOpen((v) => !v)}
+            aria-expanded={studentsOpen}
+            aria-controls="students-group"
             className={cn(
-              "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+              "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
               studentsActive
                 ? "bg-sidebar-accent text-white"
                 : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white"
             )}
           >
             <GraduationCapIcon className="h-4 w-4" />
-            <span className="flex-1">Students</span>
-          </Link>
+            <span className="flex-1 text-left">Students</span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 transition-transform duration-200",
+                studentsOpen ? "rotate-180" : "rotate-0"
+              )}
+            />
+          </button>
+
+          <AnimatePresence initial={false}>
+            {studentsOpen && (
+              <motion.div
+                id="students-group"
+                key="students-group"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: "easeInOut" }}
+                className="overflow-hidden"
+              >
+                <div className="space-y-1 ml-2 mt-1 border-l border-sidebar-border/60 pl-2 pb-1">
+                  {studentSubItems.map((item) => {
+                    const active = studentsActive && (currentTab === item.tab || (!currentTab && item.tab === "all"));
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.tab}
+                        href={`/school/students?tab=${item.tab}`}
+                        onClick={onClose}
+                        className={cn(
+                          "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                          active
+                            ? "bg-sidebar-accent text-white"
+                            : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white"
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span className="flex-1">{item.label}</span>
+                        {active && <ChevronRight className="h-4 w-4" />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* General Settings — collapsible group */}
           <p className="px-3 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">

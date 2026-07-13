@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
@@ -42,12 +43,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Pagination } from "@/components/ui/pagination";
 import { useServerPagination } from "@/lib/use-server-pagination";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -704,13 +699,16 @@ type DialogMode = "add" | "edit" | "delete";
 export function StudentManagement({ schoolId }: StudentManagementProps) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const studentTab = searchParams.get("tab") ?? "all";
 
   const [mode, setMode] = React.useState<DialogMode | null>(null);
   const [selected, setSelected] = React.useState<Student | null>(null);
   const [viewStudent, setViewStudent] = React.useState<StudentWithClass | null>(null);
   const [classFilter, setClassFilter] = React.useState<string>("all");
   const [studentActiveFilter, setStudentActiveFilter] = React.useState<ActiveFilter>("active");
-  const [studentTab, setStudentTab] = React.useState<string>("all");
   const [isFreeOnly, setIsFreeOnly] = React.useState(false);
   const { page, pageSize, search, setPage, setSearch, handlePageSizeChange } = useServerPagination();
 
@@ -887,201 +885,174 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
           )}
         </div>
 
-        <Tabs value={studentTab} onValueChange={setStudentTab} className="w-full">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <TabsList className="w-full sm:w-auto overflow-x-auto">
-              <TabsTrigger value="all" className="gap-1.5 flex-1 sm:flex-none">
-                <Users className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">All Students</span>
-                <span className="sm:hidden">All</span>
-              </TabsTrigger>
-              <TabsTrigger value="list" className="gap-1.5">
-                <Table className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Basic List</span>
-                <span className="sm:hidden">List</span>
-              </TabsTrigger>
-              <TabsTrigger value="admission" className="gap-1.5">
-                <FileText className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Admission Letter</span>
-                <span className="sm:hidden">Letter</span>
-              </TabsTrigger>
-              <TabsTrigger value="attachments" className="gap-1.5">
-                <Paperclip className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Attachments</span>
-                <span className="sm:hidden">Files</span>
-              </TabsTrigger>
-            </TabsList>
-
-            {(studentTab === "all" || studentTab === "list") && (
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="inline-flex rounded-md border bg-muted/40 p-0.5">
-                  {(["active", "inactive", "all"] as const).map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => { setStudentActiveFilter(f); setPage(1); }}
-                      className={`rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
-                        studentActiveFilter === f
-                          ? "bg-background text-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {f === "all" ? "All" : f}
-                    </button>
-                  ))}
-                </div>
-                <Select value={classFilter} onValueChange={setClassFilter}>
-                  <SelectTrigger className="w-full sm:w-44">
-                    <SelectValue placeholder="Filter by class" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Classes</SelectItem>
-                    {classes.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+        {/* Filter bar — shared for all/list tabs */}
+        {(studentTab === "all" || studentTab === "list") && (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex rounded-md border bg-muted/40 p-0.5">
+              {(["active", "inactive", "all"] as const).map((f) => (
                 <button
-                  onClick={() => { setIsFreeOnly((v) => !v); setPage(1); }}
-                  className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                    isFreeOnly
-                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                  key={f}
+                  onClick={() => { setStudentActiveFilter(f); setPage(1); }}
+                  className={`rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
+                    studentActiveFilter === f
+                      ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <Gift className="h-3.5 w-3.5" />
-                  Free Only
+                  {f === "all" ? "All" : f}
                 </button>
-                <div className="relative w-full sm:w-64">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search name, reg no, father..."
-                    className="pl-9 pr-8"
-                  />
-                  {search && (
-                    <button
-                      onClick={() => setSearch("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+              ))}
+            </div>
+            <Select value={classFilter} onValueChange={setClassFilter}>
+              <SelectTrigger className="w-full sm:w-44">
+                <SelectValue placeholder="Filter by class" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Classes</SelectItem>
+                {classes.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <button
+              onClick={() => { setIsFreeOnly((v) => !v); setPage(1); }}
+              className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                isFreeOnly
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Gift className="h-3.5 w-3.5" />
+              Free Only
+            </button>
+            <div className="relative w-full sm:w-64">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, reg no, father..."
+                className="pl-9 pr-8"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
+        )}
 
-          {/* All Students tab */}
-          <TabsContent value="all" className="mt-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex flex-wrap items-center gap-2 text-base font-medium">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  Student Directory
-                  {counts && (
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600">
-                        {counts.active} Active
-                      </span>
-                      <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600">
-                        {counts.inactive} Inactive
-                      </span>
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                        {counts.total} Total
-                      </span>
+        {/* All Students tab */}
+        {studentTab === "all" && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex flex-wrap items-center gap-2 text-base font-medium">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                Student Directory
+                {counts && (
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600">
+                      {counts.active} Active
                     </span>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : students.length === 0 ? (
-              <EmptyState onCreate={openAdd} />
-            ) : (
-              <>
-                {/* Card grid */}
-                {students.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <Search className="mb-3 h-8 w-8 text-muted-foreground/50" />
-                    <p className="text-sm text-muted-foreground">No students match your filters.</p>
-                    <Button variant="outline" size="sm" className="mt-3" onClick={() => { setSearch(""); setClassFilter("all"); }}>
-                      Clear filters
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                      <AnimatePresence>
-                        {students.map((s) => (
-                          <StudentCard
-                            key={s.id}
-                            student={s}
-                            onEdit={openEdit}
-                            onView={setViewStudent}
-                            onDelete={openDelete}
-                          />
-                        ))}
-                      </AnimatePresence>
-                    </div>
-                    <div className="mt-4">
-                      <Pagination
-                        page={page}
-                        pageSize={pageSize}
-                        total={totalStudents}
-                        onPageChange={setPage}
-                        onPageSizeChange={handlePageSizeChange}
-                      />
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Basic List tab */}
-          <TabsContent value="list" className="mt-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base font-medium">
-                  <Table className="h-4 w-4 text-muted-foreground" />
-                  Student List
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                    {totalStudents}
+                    <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600">
+                      {counts.inactive} Inactive
+                    </span>
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                      {counts.total} Total
+                    </span>
                   </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <StudentDirectoryTab
-                  schoolId={schoolId}
-                  controlledSearch={search}
-                  controlledSetSearch={setSearch}
-                  controlledActiveFilter={studentActiveFilter}
-                  controlledSetActiveFilter={setStudentActiveFilter}
-                  controlledClassId={classFilter}
-                  controlledSetClassId={setClassFilter}
-                  controlledIsFree={isFreeOnly || undefined}
-                  hideFilterBar
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : students.length === 0 ? (
+                <EmptyState onCreate={openAdd} />
+              ) : (
+                <>
+                  {students.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <Search className="mb-3 h-8 w-8 text-muted-foreground/50" />
+                      <p className="text-sm text-muted-foreground">No students match your filters.</p>
+                      <Button variant="outline" size="sm" className="mt-3" onClick={() => { setSearch(""); setClassFilter("all"); }}>
+                        Clear filters
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                        <AnimatePresence>
+                          {students.map((s) => (
+                            <StudentCard
+                              key={s.id}
+                              student={s}
+                              onEdit={openEdit}
+                              onView={setViewStudent}
+                              onDelete={openDelete}
+                            />
+                          ))}
+                        </AnimatePresence>
+                      </div>
+                      <div className="mt-4">
+                        <Pagination
+                          page={page}
+                          pageSize={pageSize}
+                          total={totalStudents}
+                          onPageChange={setPage}
+                          onPageSizeChange={handlePageSizeChange}
+                        />
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
-          {/* Admission Letter tab */}
-          <TabsContent value="admission" className="mt-4">
-            <AdmissionLetterTab schoolId={schoolId} />
-          </TabsContent>
+        {/* Basic List tab */}
+        {studentTab === "list" && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-medium">
+                <Table className="h-4 w-4 text-muted-foreground" />
+                Student List
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                  {totalStudents}
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StudentDirectoryTab
+                schoolId={schoolId}
+                controlledSearch={search}
+                controlledSetSearch={setSearch}
+                controlledActiveFilter={studentActiveFilter}
+                controlledSetActiveFilter={setStudentActiveFilter}
+                controlledClassId={classFilter}
+                controlledSetClassId={setClassFilter}
+                controlledIsFree={isFreeOnly || undefined}
+                hideFilterBar
+              />
+            </CardContent>
+          </Card>
+        )}
 
-          {/* Attachments tab */}
-          <TabsContent value="attachments" className="mt-4">
-            <AttachmentsTab schoolId={schoolId} />
-          </TabsContent>
-        </Tabs>
+        {/* Admission Letter tab */}
+        {studentTab === "admission" && (
+          <AdmissionLetterTab schoolId={schoolId} />
+        )}
+
+        {/* Attachments tab */}
+        {studentTab === "attachments" && (
+          <AttachmentsTab schoolId={schoolId} />
+        )}
       </motion.div>
     </>
   );

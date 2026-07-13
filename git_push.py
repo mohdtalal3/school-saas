@@ -2,7 +2,7 @@
 import subprocess
 import sys
 
-COMMIT_MESSAGE = "Add free education and previous balance"
+COMMIT_MESSAGE = "add subgrouping in sidebar"
 
 def run(cmd):
     print(f"▶ {cmd}")

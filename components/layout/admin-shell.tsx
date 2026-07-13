@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
@@ -65,12 +66,14 @@ export function AdminShell({ schoolId, initialSchool, children }: AdminShellProp
       }}
     >
       <div className="flex min-h-screen bg-muted/30">
-        <AdminSidebar
-          open={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-          schoolName={liveSchool?.name ?? "School ERP"}
-          onLogout={logout}
-        />
+        <Suspense fallback={null}>
+          <AdminSidebar
+            open={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            schoolName={liveSchool?.name ?? "School ERP"}
+            onLogout={logout}
+          />
+        </Suspense>
         <div className="flex min-w-0 flex-1 flex-col">
           <AdminTopbar
             onMenuClick={() => setSidebarOpen(true)}
