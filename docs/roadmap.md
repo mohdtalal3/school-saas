@@ -74,14 +74,16 @@
 ### 2.6 Students (IN PROGRESS)
 
 - ✅ Student CRUD (create, list, edit, delete, view) — card grid view with photo, class, fee
-- ✅ Student fields: name, photo, registration no (auto), date of admission, class dropdown, discount, mobile, DOB, gender, identification mark, blood group, disease, birth form ID, additional note, orphan, OSC, religion, family, total siblings, address, father info
+- ✅ Student fields: name, photo, registration no (auto), date of admission, class dropdown, discount, mobile, DOB, gender, identification mark, blood group, disease, birth form ID, additional note, orphan, OSC, is_free, previous_balance, religion, family, total siblings, address, father info
 - ✅ Class dropdown loads from classes API (fee shown, net fee calculated)
 - ✅ Photo upload via Supabase Storage (student-photos bucket)
 - ✅ Student attachments (birth certificate, CNIC, results, etc.) — student-attachments bucket
 - ✅ Search by name, registration no, father name, mobile
 - ✅ Filter by class
+- ✅ Filter by free education status
 - ✅ View details dialog with all fields
-- ⏳ CSV import / export
+- ✅ CSV bulk import (class selection, file upload, sample CSV download)
+- ⏳ CSV export
 - ⏳ Parent linkage
 - ⏳ Assign to section
 

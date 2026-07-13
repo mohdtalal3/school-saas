@@ -63,6 +63,7 @@ import { SearchPicker } from "@/components/ui/search-picker";
 import { useToast } from "@/components/ui/toast";
 import { StudentForm } from "./student-form";
 import { StudentDirectoryTab } from "./student-directory-tab";
+import { ImportStudentsDialog } from "./import-students-dialog";
 import { AdmissionLetterTab } from "./admission-letter-tab";
 import type { ActiveFilter } from "@/components/ui/directory-table";
 import type {
@@ -113,7 +114,7 @@ async function fetchClasses(schoolId: string): Promise<SchoolClass[]> {
   const res = await fetch(`/api/classes/${schoolId}?limit=1000`);
   const json = await res.json();
   if (!res.ok || !json.success) throw new Error(json.error || "Failed to load");
-  return json.data.data;
+  return json.data?.data ?? [];
 }
 
 async function createStudentApi(
@@ -710,6 +711,7 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
   const [classFilter, setClassFilter] = React.useState<string>("all");
   const [studentActiveFilter, setStudentActiveFilter] = React.useState<ActiveFilter>("active");
   const [isFreeOnly, setIsFreeOnly] = React.useState(false);
+  const [importOpen, setImportOpen] = React.useState(false);
   const { page, pageSize, search, setPage, setSearch, handlePageSizeChange } = useServerPagination();
 
   // Debounce search
@@ -735,10 +737,11 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
   const totalStudents = data?.total ?? 0;
   const counts = data?.counts;
 
-  const { data: classes = [] } = useQuery({
+  const { data: classes = [] } = useQuery<SchoolClass[]>({
     queryKey: ["classes", schoolId],
     queryFn: () => fetchClasses(schoolId),
   });
+  const safeClasses = Array.isArray(classes) ? classes : [];
 
   // ── Mutations ──────────────────────────────────────────────────────────────
   const createMutation = useMutation({
@@ -863,6 +866,13 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
       {/* View dialog */}
       <ViewDialog student={viewStudent} onClose={() => setViewStudent(null)} />
 
+      {/* Import dialog */}
+      <ImportStudentsDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        schoolId={schoolId}
+      />
+
       {/* Page content */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -878,10 +888,16 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
             </p>
           </div>
           {studentTab === "all" && (
-            <Button onClick={openAdd} className="gap-2 shrink-0">
-              <Plus className="h-4 w-4" />
-              Add Student
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button onClick={() => setImportOpen(true)} variant="outline" className="gap-2">
+                <Upload className="h-4 w-4" />
+                Import
+              </Button>
+              <Button onClick={openAdd} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Student
+              </Button>
+            </div>
           )}
         </div>
 
@@ -909,7 +925,7 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Classes</SelectItem>
-                {classes.map((c) => (
+                {safeClasses.map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}
               </SelectContent>

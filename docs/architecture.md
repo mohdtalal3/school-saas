@@ -161,3 +161,13 @@ Single database, shared schema, **school_id** discriminator everywhere.
 | `job-offer-letter-pdf.tsx` | `@react-pdf/renderer` Job Offer Letter document |
 | `job-offer-pdf-viewer.tsx` | Client-side `PDFViewer` wrapper for offer letter |
 | `job-offer-tab.tsx` | Tab component to launch offer letter viewer |
+
+### Key feature directories (`features/students/`)
+
+| File | Purpose |
+| --- | --- |
+| `student-form.tsx` | Add/edit student form (RHF + Zod) |
+| `student-management.tsx` | Main student page — card grid, filters, dialogs |
+| `student-directory-tab.tsx` | Basic List tab — paginated table with CSV export |
+| `import-students-dialog.tsx` | CSV bulk import dialog — class select, file upload, sample CSV download |
+| `admission-letter-tab.tsx` | Admission letter generation tab |

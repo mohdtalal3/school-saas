@@ -157,6 +157,8 @@ CREATE TABLE students (
   additional_note TEXT,
   is_orphan       BOOLEAN NOT NULL DEFAULT false,
   is_osc          BOOLEAN NOT NULL DEFAULT false,
+  is_free         BOOLEAN NOT NULL DEFAULT false,
+  previous_balance NUMERIC(12,2) NOT NULL DEFAULT 0,
   religion        TEXT,
   family          TEXT,
   total_siblings  INTEGER NOT NULL DEFAULT 0,
@@ -247,6 +249,8 @@ CREATE POLICY school_admins_insert ON school_admins
 - `school-logos` — public read, authenticated write. School logos (Institute Profile).
 - `employee-photos` — employee profile photos.
 - `employee-attachments` — employee documents/certificates.
+- `student-photos` — student profile photos.
+- `student-attachments` — student documents (birth certificate, CNIC, results, etc.).
 
 ---
 
@@ -262,6 +266,7 @@ supabase/
     ├── 0003_employees.sql        ✅ Applied — employees + employee_attachments tables
     ├── 0006_classes.sql          ✅ Applied — classes table (name, fee, teacher, capacity)
     ├── 0007_students.sql         ✅ Applied — students + student_attachments tables + storage buckets
+    ├── 0008_student_free_balance.sql ✅ Applied — is_free + previous_balance columns on students
     └── ...
 ```
 

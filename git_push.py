@@ -2,7 +2,7 @@
 import subprocess
 import sys
 
-COMMIT_MESSAGE = "add subgrouping in sidebar"
+COMMIT_MESSAGE = "add import student tab"
 
 def run(cmd):
     print(f"▶ {cmd}")
