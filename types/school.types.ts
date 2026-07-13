@@ -135,6 +135,8 @@ export interface Student {
   additional_note: string | null;
   is_orphan: boolean;
   is_osc: boolean;
+  is_free: boolean;
+  previous_balance: number;
   religion: string | null;
   family: string | null;
   total_siblings: number;

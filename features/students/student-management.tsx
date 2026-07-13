@@ -33,6 +33,7 @@ import {
   IdCard,
   Users as UsersIcon,
   Table,
+  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,7 +82,7 @@ import { getInitials } from "@/lib/utils";
 
 async function fetchStudents(
   schoolId: string,
-  params: { page: number; limit: number; search: string; classId: string; active?: boolean | "all" }
+  params: { page: number; limit: number; search: string; classId: string; active?: boolean | "all"; isFree?: boolean }
 ): Promise<{ data: StudentWithClass[]; total: number; counts?: { active: number; inactive: number; total: number } }> {
   const qs = new URLSearchParams({
     page: String(params.page),
@@ -90,6 +91,7 @@ async function fetchStudents(
   if (params.active !== undefined) qs.set("active", params.active === "all" ? "all" : String(params.active));
   if (params.search) qs.set("search", params.search);
   if (params.classId && params.classId !== "all") qs.set("classId", params.classId);
+  if (params.isFree) qs.set("isFree", "true");
   const res = await fetch(`/api/students/${schoolId}?${qs}`);
   const json = await res.json();
   if (!res.ok || !json.success) throw new Error(json.error || "Failed to load");
@@ -229,6 +231,12 @@ function StudentCard({
             {student.gender}
           </span>
         )}
+        {student.is_free && (
+          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
+            <Gift className="h-3 w-3" />
+            Free
+          </span>
+        )}
       </div>
 
       {/* Info row */}
@@ -342,6 +350,11 @@ function ViewDialog({
                   OSC
                 </span>
               )}
+              {student.is_free && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600">
+                  Free Education
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -360,6 +373,7 @@ function ViewDialog({
               <ViewField icon={Calendar} label="Date of Admission" value={student.date_of_admission} />
               <ViewField icon={Coins} label="Net Fee" value={`Rs. ${netFee.toLocaleString()}`} />
               <ViewField icon={Coins} label="Discount" value={student.discount > 0 ? `Rs. ${student.discount.toLocaleString()}` : null} />
+              <ViewField icon={Coins} label="Previous Balance" value={student.previous_balance > 0 ? `Rs. ${student.previous_balance.toLocaleString()}` : null} />
               <ViewField icon={Phone} label="Mobile" value={student.mobile} />
             </div>
           </div>
@@ -697,6 +711,7 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
   const [classFilter, setClassFilter] = React.useState<string>("all");
   const [studentActiveFilter, setStudentActiveFilter] = React.useState<ActiveFilter>("active");
   const [studentTab, setStudentTab] = React.useState<string>("all");
+  const [isFreeOnly, setIsFreeOnly] = React.useState(false);
   const { page, pageSize, search, setPage, setSearch, handlePageSizeChange } = useServerPagination();
 
   // Debounce search
@@ -708,13 +723,14 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const { data, isLoading } = useQuery({
-    queryKey: ["students", schoolId, page, pageSize, debouncedSearch, classFilter, studentActiveFilter],
+    queryKey: ["students", schoolId, page, pageSize, debouncedSearch, classFilter, studentActiveFilter, isFreeOnly],
     queryFn: () => fetchStudents(schoolId, {
       page,
       limit: pageSize,
       search: debouncedSearch,
       classId: classFilter,
       active: studentActiveFilter === "all" ? "all" : studentActiveFilter === "active",
+      isFree: isFreeOnly || undefined,
     }),
   });
   const students = data?.data ?? [];
@@ -924,6 +940,17 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
                     ))}
                   </SelectContent>
                 </Select>
+                <button
+                  onClick={() => { setIsFreeOnly((v) => !v); setPage(1); }}
+                  className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                    isFreeOnly
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Gift className="h-3.5 w-3.5" />
+                  Free Only
+                </button>
                 <div className="relative w-full sm:w-64">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -1038,6 +1065,7 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
                   controlledSetActiveFilter={setStudentActiveFilter}
                   controlledClassId={classFilter}
                   controlledSetClassId={setClassFilter}
+                  controlledIsFree={isFreeOnly || undefined}
                   hideFilterBar
                 />
               </CardContent>

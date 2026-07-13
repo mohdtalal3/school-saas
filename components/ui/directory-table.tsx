@@ -39,7 +39,7 @@ interface DirectoryTableProps<T extends { id: string; is_active: boolean }> {
   schoolId: string;
   fetchFn: (
     schoolId: string,
-    params: { page: number; limit: number; search: string; active: boolean | "all"; classId?: string }
+    params: { page: number; limit: number; search: string; active: boolean | "all"; classId?: string; isFree?: boolean }
   ) => Promise<{ data: T[]; total: number }>;
   queryKeyPrefix: string;
   columns: DirectoryColumn<T>[];
@@ -54,6 +54,7 @@ interface DirectoryTableProps<T extends { id: string; is_active: boolean }> {
   controlledSetActiveFilter?: (f: ActiveFilter) => void;
   controlledClassId?: string;
   controlledSetClassId?: (v: string) => void;
+  controlledIsFree?: boolean;
   hideFilterBar?: boolean;
 }
 
@@ -75,6 +76,7 @@ export function DirectoryTable<T extends { id: string; is_active: boolean }>({
   controlledSetActiveFilter,
   controlledClassId,
   controlledSetClassId,
+  controlledIsFree,
   hideFilterBar,
 }: DirectoryTableProps<T>) {
   const qc = useQueryClient();
@@ -102,7 +104,7 @@ export function DirectoryTable<T extends { id: string; is_active: boolean }>({
     activeFilter === "active" ? true : activeFilter === "inactive" ? false : "all";
 
   const { data, isLoading } = useQuery({
-    queryKey: [queryKeyPrefix, schoolId, page, pageSize, debouncedSearch, activeParam, classId],
+    queryKey: [queryKeyPrefix, schoolId, page, pageSize, debouncedSearch, activeParam, classId, controlledIsFree],
     queryFn: () =>
       fetchFn(schoolId, {
         page,
@@ -110,6 +112,7 @@ export function DirectoryTable<T extends { id: string; is_active: boolean }>({
         search: debouncedSearch,
         active: activeParam,
         classId: classId !== "all" ? classId : undefined,
+        isFree: controlledIsFree,
       }),
   });
 

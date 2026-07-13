@@ -38,6 +38,7 @@ export interface PaginationParams {
   search?: string;
   classId?: string;
   active?: boolean | "all";
+  isFree?: boolean;
 }
 
 export async function getStudents(
@@ -64,6 +65,10 @@ export async function getStudents(
 
   if (params.classId) {
     query = query.eq("class_id", params.classId);
+  }
+
+  if (params.isFree !== undefined) {
+    query = query.eq("is_free", params.isFree);
   }
 
   if (params.search?.trim()) {
@@ -181,6 +186,8 @@ export async function createStudent(
     additional_note: input.additional_note ?? null,
     is_orphan: input.is_orphan ?? false,
     is_osc: input.is_osc ?? false,
+    is_free: input.is_free ?? false,
+    previous_balance: input.previous_balance ?? 0,
     religion: input.religion ?? null,
     family: input.family ?? null,
     total_siblings: input.total_siblings ?? 0,

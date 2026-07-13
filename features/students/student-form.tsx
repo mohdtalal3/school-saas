@@ -63,6 +63,8 @@ const schema = z.object({
   additional_note: z.string().optional(),
   is_orphan: z.boolean().optional(),
   is_osc: z.boolean().optional(),
+  is_free: z.boolean().optional(),
+  previous_balance: z.string().optional(),
   religion: z.string().optional(),
   family: z.string().optional(),
   total_siblings: z.string().optional(),
@@ -160,6 +162,8 @@ export function StudentForm({
           additional_note: initialData.additional_note ?? "",
           is_orphan: initialData.is_orphan,
           is_osc: initialData.is_osc,
+          is_free: initialData.is_free,
+          previous_balance: String(initialData.previous_balance),
           religion: initialData.religion ?? "",
           family: initialData.family ?? "",
           total_siblings: String(initialData.total_siblings),
@@ -184,6 +188,8 @@ export function StudentForm({
           additional_note: "",
           is_orphan: false,
           is_osc: false,
+          is_free: false,
+          previous_balance: "0",
           religion: "Islam",
           family: "",
           total_siblings: "0",
@@ -287,6 +293,8 @@ export function StudentForm({
         additional_note: v.additional_note || null,
         is_orphan: v.is_orphan ?? false,
         is_osc: v.is_osc ?? false,
+        is_free: v.is_free ?? false,
+        previous_balance: Number(v.previous_balance) || 0,
         religion: v.religion || null,
         family: v.family || null,
         total_siblings: Number(v.total_siblings) || 0,
@@ -449,8 +457,8 @@ export function StudentForm({
         </div>
       )}
 
-      {/* Discount + Mobile */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* Discount + Previous Balance + Free */}
+      <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-1.5">
           <Label htmlFor="discount">Discount in Fee</Label>
           <Input
@@ -462,6 +470,32 @@ export function StudentForm({
           />
         </div>
 
+        <div className="space-y-1.5">
+          <Label htmlFor="previous_balance">Previous Balance</Label>
+          <Input
+            id="previous_balance"
+            type="number"
+            step="0.01"
+            placeholder="0"
+            {...register("previous_balance")}
+          />
+        </div>
+
+        <div className="flex items-end pb-1.5">
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-input"
+              checked={watch("is_free") ?? false}
+              onChange={(e) => setValue("is_free", e.target.checked, { shouldDirty: true })}
+            />
+            Free Education
+          </label>
+        </div>
+      </div>
+
+      {/* Mobile */}
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="mobile">Mobile (SMS/WhatsApp)</Label>
           <div className="flex">

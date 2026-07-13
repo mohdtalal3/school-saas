@@ -2,7 +2,7 @@
 import subprocess
 import sys
 
-COMMIT_MESSAGE = "fix mobile responsive issue"
+COMMIT_MESSAGE = "Add free education and previous balance"
 
 def run(cmd):
     print(f"▶ {cmd}")

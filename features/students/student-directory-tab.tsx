@@ -7,7 +7,7 @@ import type { StudentWithClass, SchoolClass } from "@/types/school.types";
 
 async function fetchStudentsForDirectory(
   schoolId: string,
-  params: { page: number; limit: number; search: string; active: boolean | "all"; classId?: string }
+  params: { page: number; limit: number; search: string; active: boolean | "all"; classId?: string; isFree?: boolean }
 ): Promise<{ data: StudentWithClass[]; total: number }> {
   const qs = new URLSearchParams({
     page: String(params.page),
@@ -16,6 +16,7 @@ async function fetchStudentsForDirectory(
   });
   if (params.search) qs.set("search", params.search);
   if (params.classId) qs.set("classId", params.classId);
+  if (params.isFree) qs.set("isFree", "true");
   const res = await fetch(`/api/students/${schoolId}?${qs}`);
   const json = await res.json();
   if (!res.ok || !json.success) throw new Error(json.error || "Failed to load");
@@ -61,6 +62,13 @@ const columns: DirectoryColumn<StudentWithClass>[] = [
     render: (s) => s.gender ?? "—",
   },
   {
+    key: "is_free",
+    label: "Free",
+    render: (s) => s.is_free
+      ? <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-xs font-medium text-emerald-600">Free</span>
+      : "—",
+  },
+  {
     key: "date_of_admission",
     label: "Admitted",
     render: (s) => new Date(s.date_of_admission).toLocaleDateString(),
@@ -83,6 +91,9 @@ const exportColumns: DirectoryColumn<StudentWithClass>[] = [
   { key: "father_profession", label: "Father Profession", exportValue: (s) => s.father_profession ?? "" },
   { key: "address", label: "Address", exportValue: (s) => s.address ?? "" },
   { key: "is_orphan", label: "Orphan", exportValue: (s) => (s.is_orphan ? "Yes" : "No") },
+  { key: "is_osc", label: "OSC", exportValue: (s) => (s.is_osc ? "Yes" : "No") },
+  { key: "is_free", label: "Free Education", exportValue: (s) => (s.is_free ? "Yes" : "No") },
+  { key: "previous_balance", label: "Previous Balance", exportValue: (s) => String(s.previous_balance ?? 0) },
   { key: "is_active", label: "Status", exportValue: (s) => (s.is_active ? "Active" : "Inactive") },
 ];
 
@@ -94,6 +105,7 @@ interface Props {
   controlledSetActiveFilter?: (f: ActiveFilter) => void;
   controlledClassId?: string;
   controlledSetClassId?: (v: string) => void;
+  controlledIsFree?: boolean;
   hideFilterBar?: boolean;
 }
 
@@ -105,6 +117,7 @@ export function StudentDirectoryTab({
   controlledSetActiveFilter,
   controlledClassId,
   controlledSetClassId,
+  controlledIsFree,
   hideFilterBar,
 }: Props) {
   const { data: classes = [] } = useQuery({
@@ -129,6 +142,7 @@ export function StudentDirectoryTab({
       controlledSetActiveFilter={controlledSetActiveFilter}
       controlledClassId={controlledClassId}
       controlledSetClassId={controlledSetClassId}
+      controlledIsFree={controlledIsFree}
       hideFilterBar={hideFilterBar}
     />
   );

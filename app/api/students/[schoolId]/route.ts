@@ -21,6 +21,8 @@ const NewStudentSchema = z.object({
   additional_note: z.string().nullable().optional(),
   is_orphan: z.boolean().optional(),
   is_osc: z.boolean().optional(),
+  is_free: z.boolean().optional(),
+  previous_balance: z.number().min(0).optional(),
   religion: z.string().nullable().optional(),
   family: z.string().nullable().optional(),
   total_siblings: z.number().int().min(0).optional(),
@@ -47,8 +49,10 @@ export async function GET(
     const classId = url.searchParams.get("classId") ?? undefined;
     const activeParam = url.searchParams.get("active") ?? "true";
     const active = activeParam === "all" ? "all" : activeParam === "true";
+    const isFreeParam = url.searchParams.get("isFree");
+    const isFree = isFreeParam === "true" ? true : undefined;
 
-    const result = await getStudents(schoolId, { page, limit, search, classId, active });
+    const result = await getStudents(schoolId, { page, limit, search, classId, active, isFree });
     return NextResponse.json(success(result));
   } catch (e) {
     return NextResponse.json(

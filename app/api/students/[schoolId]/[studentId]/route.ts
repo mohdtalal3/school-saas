@@ -24,6 +24,8 @@ const UpdateSchema = z.object({
   additional_note: z.string().nullable().optional(),
   is_orphan: z.boolean().optional(),
   is_osc: z.boolean().optional(),
+  is_free: z.boolean().optional(),
+  previous_balance: z.number().min(0).optional(),
   religion: z.string().nullable().optional(),
   family: z.string().nullable().optional(),
   total_siblings: z.number().int().min(0).optional(),
