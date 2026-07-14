@@ -95,9 +95,15 @@ A single Next.js 15 (App Router) application that hosts:
 Two distinct PDF generation approaches are used:
 
 #### Puppeteer (ID Cards)
-- **Route:** `app/api/employees/id-cards/pdf/route.ts` — server-side, launches headless Chrome
-- **Template:** `features/employees/id-card-html.ts` — builds full HTML string with inline CSS
-- **Flow:** API route fetches employees + school → builds HTML → `page.setContent()` → `page.pdf()` → returns PDF buffer
+- **Routes:**
+  - `app/api/employees/id-cards/pdf/route.ts` — employee ID cards (server-side, launches headless Chrome)
+  - `app/api/students/id-cards/pdf/route.ts` — student ID cards (same Puppeteer flow)
+- **Templates:**
+  - `features/employees/id-card-html.ts` — employee card HTML template (CR80 portrait, premium design)
+  - `features/students/student-id-card-html.ts` — student card HTML template (same CSS/layout, student-specific fields)
+- **Shared types:** `features/employees/id-card-types.ts` — `IdCardTheme` interface + `DEFAULT_ID_CARD_THEME` (imported by both employee and student features)
+- **Flow:** API route fetches data + school → builds HTML → `page.setContent()` → `page.pdf()` → returns PDF buffer
+- **Selection modes:** Both support "all" (optionally filtered by class for students) and "select" (individual pick via server-side search). PDF endpoint receives `ids` or `classIds` as query params and fetches only what's needed.
 - **Why Puppeteer:** Supports complex CSS (gradients, box-shadows, web fonts, z-index layering) needed for the premium ID card design
 - **Card size:** CR80 portrait (53.98mm × 85.6mm), 6 cards per A4 page
 
@@ -147,16 +153,100 @@ Single database, shared schema, **school_id** discriminator everywhere.
 - `/hooks` — React hooks.
 - `/types` — TypeScript types only.
 
+## Layout & Navigation Conventions
+
+### Sidebar Dropdown Groups
+
+The admin sidebar uses collapsible groups for modules with multiple sub-views (Students, Employees, Settings). Each group:
+
+- Has a parent button that toggles open/close (Framer Motion animated).
+- Contains sub-items that navigate via URL query params (e.g., `/school/students?tab=family`).
+- Auto-expands when the user is on the parent page.
+- Highlights the active sub-item based on `useSearchParams` tab value.
+
+### Tab State via URL
+
+Tabs are no longer managed by local React state. Instead:
+
+- The active tab is read from `useSearchParams().get("tab")`.
+- Sidebar sub-items link to `?tab=<value>`.
+- Content is conditionally rendered based on the tab value.
+- This enables deep-linking, browser back/forward, and bookmarkable views.
+
+### Suspense Boundaries
+
+Components using `useSearchParams` must be wrapped in `<Suspense>`:
+
+- `AdminSidebar` is wrapped in `AdminShell`.
+- Page-level components (e.g., `StudentManagement`, `EmployeeManagement`) are wrapped in their respective `page.tsx` files.
+
+### Page Container & Layout Conventions
+
+All admin portal pages follow a consistent container pattern:
+
+- **Page root:** `<div className="space-y-6">` — vertical rhythm between major sections.
+- **Page header:** `<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">` — title + description on left, action button on right. Stacks on mobile.
+- **Card grids:** `grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4` — responsive card layouts for employee/student class cards.
+- **Tab content:** Each tab renders inside the same `space-y-6` container. No extra wrapper needed.
+- **Forms:** `<form className="space-y-5">` — fields grouped with `grid gap-4 sm:grid-cols-2` (or `sm:grid-cols-3`) for side-by-side inputs. Single-column on mobile.
+- **Field groups:** Bordered sections use `rounded-lg border p-3 space-y-3` with a `text-xs font-semibold uppercase tracking-wider text-muted-foreground` label.
+- **Dialogs:** `DialogContent` with `sm:max-w-md` (confirm), `sm:max-w-2xl` (view/edit), `max-h-[90vh] overflow-y-auto` for long content.
+- **ID card / theme pages:** `space-y-6 p-4 sm:p-6` root, with `grid gap-6 lg:grid-cols-[1fr_320px]` for main content + sidebar.
+- **Search-centric tabs** (Family, Admission Letter): Centered `max-w-2xl mx-auto` card container.
+- **Scrollable lists:** `max-h-[300px] overflow-y-auto rounded-md border bg-muted/20 p-2` for selected items, search results dropdowns.
+
+## Data Loading Architecture
+
+### Server-Side Pagination
+
+All list views use server-side pagination:
+
+- **Client** sends `page` and `limit` (or `pageSize`) as query params.
+- **API route** passes them to the service layer.
+- **Service layer** uses Supabase `.range(offset, offset + limit - 1)` with `{ count: "exact" }`.
+- **Response** includes `{ data: [...], total: number, counts?: {...} }`.
+- **Client** renders a `<Pagination>` component with page/pageSize controls.
+
+### Search & Filtering
+
+- Search is debounced on the client (300ms) before triggering a refetch.
+- Filters (active/inactive, class, free education) are sent as query params.
+- TanStack Query keys include all filter values for proper cache invalidation.
+
+### Search Pattern Consistency
+
+All list views and search-driven features follow the same pattern:
+
+1. **`useServerPagination` hook** (`lib/use-server-pagination.ts`) — manages `page`, `pageSize`, and `search` state. On search change, resets to page 1. Default pageSize: 25.
+2. **Debounced search** — every component creates a `debouncedSearch` state with a 300ms `setTimeout` effect. The `useQuery` call uses `debouncedSearch` (not raw `search`) as both the query key and the API param.
+3. **Server-side execution** — search is never done client-side. The API route passes `search` to the service layer, which builds a Supabase `.or()` / `.ilike()` query.
+4. **`searchFields` parameter** (students only) — `getStudents` accepts an optional `searchFields` param to restrict which columns are searched. Default: `name, registration_no, father_name, mobile`. Student ID cards tab restricts to `name, registration_no` to avoid ambiguous father name matches.
+5. **Minimum query length** — ID card "Select" mode requires ≥2 characters before triggering search.
+6. **Two search UI patterns:**
+   - **DirectoryTable** — search bar integrated into the table header, debounced, triggers server refetch with pagination.
+   - **SearchPicker** — standalone debounced search with dropdown results, used for single-select flows (Admission Letter, Job Offer Letter).
+7. **Query key structure** — `["entity", schoolId, page, pageSize, debouncedSearch, ...filters]`. Consistent across all components sharing the same data type.
+
+### TanStack Query Usage
+
+- All data fetching uses `useQuery` with structured keys (e.g., `["students", schoolId, page, pageSize, search, classFilter, activeFilter, isFreeOnly]`).
+- Mutations use `useMutation` and invalidate relevant query keys on success.
+- Query keys must be consistent across components sharing the same data (e.g., `["classes", schoolId]` must return the same shape everywhere).
+
 ### Key feature directories (`features/employees/`)
 
 | File | Purpose |
 | --- | --- |
 | `employee-form.tsx` | Add/edit employee form (RHF + Zod) |
-| `employee-list.tsx` | Table with search, filter, pagination |
-| `employee-detail.tsx` | Detail page with tabs (profile, attachments) |
-| `employee-attachments.tsx` | Attachment upload/download/delete |
-| `id-cards-client.tsx` | ID card UI — employee selection, theme picker, iframe preview, download |
-| `id-card-types.ts` | `IdCardTheme` interface + `DEFAULT_ID_CARD_THEME` |
+| `employee-management.tsx` | Main page — tabs: All, Basic List, Manage Login, Job Offer, Attachments, ID Cards |
+| `employee-directory-tab.tsx` | Basic List tab — paginated table |
+| `employee-view-dialog.tsx` | View employee details dialog |
+| `attachments-tab.tsx` | Attachments tab — left panel list, right panel upload/download/delete |
+| `employee-attachments-form.tsx` | Attachment form |
+| `manage-login-tab.tsx` | Manage employee login credentials (username, password reset, login active toggle) |
+| `id-cards-tab.tsx` | Thin wrapper — passes `schoolId` to `IdCardsClient` |
+| `id-cards-client.tsx` | ID card UI — employee selection (All/Select mode), server-side search, theme picker, iframe preview, download |
+| `id-card-types.ts` | `IdCardTheme` interface + `DEFAULT_ID_CARD_THEME` (shared with student ID cards) |
 | `id-card-html.ts` | HTML template for Puppeteer PDF (CR80 portrait, premium design) |
 | `job-offer-letter-pdf.tsx` | `@react-pdf/renderer` Job Offer Letter document |
 | `job-offer-pdf-viewer.tsx` | Client-side `PDFViewer` wrapper for offer letter |
@@ -170,4 +260,10 @@ Single database, shared schema, **school_id** discriminator everywhere.
 | `student-management.tsx` | Main student page — card grid, filters, dialogs |
 | `student-directory-tab.tsx` | Basic List tab — paginated table with CSV export |
 | `import-students-dialog.tsx` | CSV bulk import dialog — class select, file upload, sample CSV download |
-| `admission-letter-tab.tsx` | Admission letter generation tab |
+| `admission-letter-tab.tsx` | Admission letter generation tab (SearchPicker → PDF viewer) |
+| `admission-letter-pdf.tsx` | `@react-pdf/renderer` Admission Letter document |
+| `admission-letter-pdf-viewer.tsx` | Client-side `PDFViewer` wrapper |
+| `family-tab.tsx` | Family grouping tab — auto-groups students by father CNIC, search, expandable cards |
+| `promote-tab.tsx` | Promote students tab — table with checkboxes, class filter, search, bulk promote to target class |
+| `student-id-cards-tab.tsx` | Student ID card UI — All mode (class multi-select) / Select mode (server-side search), theme picker, iframe preview, download |
+| `student-id-card-html.ts` | HTML template for student ID cards (same CR80 layout, student-specific fields: Reg No, Class, Father, DOB, Blood) |

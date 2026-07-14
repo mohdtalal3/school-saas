@@ -46,13 +46,15 @@ export async function GET(
     const page = parseInt(url.searchParams.get("page") ?? "1", 10);
     const limit = parseInt(url.searchParams.get("limit") ?? "25", 10);
     const search = url.searchParams.get("search") ?? undefined;
+    const searchFieldsParam = url.searchParams.get("searchFields");
+    const searchFields = searchFieldsParam ? searchFieldsParam.split(",") : undefined;
     const classId = url.searchParams.get("classId") ?? undefined;
     const activeParam = url.searchParams.get("active") ?? "true";
     const active = activeParam === "all" ? "all" : activeParam === "true";
     const isFreeParam = url.searchParams.get("isFree");
     const isFree = isFreeParam === "true" ? true : undefined;
 
-    const result = await getStudents(schoolId, { page, limit, search, classId, active, isFree });
+    const result = await getStudents(schoolId, { page, limit, search, searchFields, classId, active, isFree });
     return NextResponse.json(success(result));
   } catch (e) {
     return NextResponse.json(

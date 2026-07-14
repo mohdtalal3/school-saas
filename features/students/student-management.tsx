@@ -65,6 +65,9 @@ import { StudentForm } from "./student-form";
 import { StudentDirectoryTab } from "./student-directory-tab";
 import { ImportStudentsDialog } from "./import-students-dialog";
 import { AdmissionLetterTab } from "./admission-letter-tab";
+import { FamilyTab } from "./family-tab";
+import { PromoteTab } from "./promote-tab";
+import { StudentIdCardsTab } from "./student-id-cards-tab";
 import type { ActiveFilter } from "@/components/ui/directory-table";
 import type {
   Student,
@@ -1068,6 +1071,21 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
         {/* Attachments tab */}
         {studentTab === "attachments" && (
           <AttachmentsTab schoolId={schoolId} />
+        )}
+
+        {/* Family tab */}
+        {studentTab === "family" && (
+          <FamilyTab schoolId={schoolId} />
+        )}
+
+        {/* Promote tab */}
+        {studentTab === "promote" && (
+          <PromoteTab schoolId={schoolId} />
+        )}
+
+        {/* ID Cards tab */}
+        {studentTab === "idcards" && (
+          <StudentIdCardsTab schoolId={schoolId} />
         )}
       </motion.div>
     </>

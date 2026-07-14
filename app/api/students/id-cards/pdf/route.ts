@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import puppeteer from "puppeteer";
 import { getSchoolSession } from "@/lib/auth/jwt";
-import { getEmployees, getEmployeeById } from "@/services/employee.service";
+import { getStudents, getStudentById } from "@/services/student.service";
 import { getSchoolById } from "@/services/school.service";
-import { buildIdCardsHtml } from "@/features/employees/id-card-html";
+import { buildStudentIdCardsHtml } from "@/features/students/student-id-card-html";
 import { DEFAULT_ID_CARD_THEME } from "@/features/employees/id-card-types";
 
 export async function GET(req: Request) {
@@ -15,32 +15,47 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const idsParam = searchParams.get("ids");
+    const classIdsParam = searchParams.get("classIds");
     const download = searchParams.get("download") === "1";
 
     const ids = idsParam ? idsParam.split(",").filter(Boolean) : null;
+    const classIds = classIdsParam ? classIdsParam.split(",").filter(Boolean) : null;
 
-    let employees;
+    let students;
     let school;
+
     if (ids) {
-      // Fetch only selected employees + school in parallel
-      const [selectedEmployees, schoolResult] = await Promise.all([
-        Promise.all(ids.map((id) => getEmployeeById(id, session.schoolId))),
+      // Select mode — fetch only chosen students
+      const [selectedStudents, schoolResult] = await Promise.all([
+        Promise.all(ids.map((id) => getStudentById(id, session.schoolId))),
         getSchoolById(session.schoolId),
       ]);
-      employees = selectedEmployees;
+      students = selectedStudents;
+      school = schoolResult;
+    } else if (classIds) {
+      // Class filter mode — fetch students from selected classes
+      const [classStudents, schoolResult] = await Promise.all([
+        Promise.all(
+          classIds.map((cid) =>
+            getStudents(session.schoolId, { limit: 10000, classId: cid, active: true })
+          )
+        ),
+        getSchoolById(session.schoolId),
+      ]);
+      students = classStudents.flatMap((r) => r.data);
       school = schoolResult;
     } else {
-      // "All" mode — fetch all employees server-side
-      const [empResult, schoolResult] = await Promise.all([
-        getEmployees(session.schoolId, { limit: 1000 }),
+      // All mode — fetch all active students
+      const [studentResult, schoolResult] = await Promise.all([
+        getStudents(session.schoolId, { limit: 10000, active: true }),
         getSchoolById(session.schoolId),
       ]);
-      employees = empResult.data;
+      students = studentResult.data;
       school = schoolResult;
     }
 
-    if (employees.length === 0) {
-      return NextResponse.json({ error: "No employees to render" }, { status: 400 });
+    if (students.length === 0) {
+      return NextResponse.json({ error: "No students to render" }, { status: 400 });
     }
 
     const theme = {
@@ -50,7 +65,7 @@ export async function GET(req: Request) {
       bgColor: searchParams.get("bgColor") ?? DEFAULT_ID_CARD_THEME.bgColor,
     };
 
-    const html = buildIdCardsHtml(employees, school, theme);
+    const html = buildStudentIdCardsHtml(students, school, theme);
 
     const browser = await puppeteer.launch({
       headless: true,
@@ -75,12 +90,12 @@ export async function GET(req: Request) {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${school.name.replace(/[^a-z0-9]+/gi, "-")}-id-cards.pdf"`,
+        "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${school.name.replace(/[^a-z0-9]+/gi, "-")}-student-id-cards.pdf"`,
         "Cache-Control": "no-store",
       },
     });
   } catch (err) {
-    console.error("ID card PDF generation failed:", err);
+    console.error("Student ID card PDF generation failed:", err);
     return NextResponse.json({ error: "Failed to generate PDF" }, { status: 500 });
   }
 }

@@ -38,6 +38,8 @@ CREATE TABLE schools (
   currency_symbol TEXT DEFAULT '$',
   currency_name   TEXT DEFAULT 'USD',
   timezone        TEXT DEFAULT 'UTC',
+  employee_rules  TEXT,
+  student_rules   TEXT,
   created_at    TIMESTAMPTZ DEFAULT now(),
   updated_at    TIMESTAMPTZ DEFAULT now()
 );
@@ -197,11 +199,8 @@ These tables are **not yet created** but the foreign key relationships and namin
 
 | Table | FKs | Purpose |
 | --- | --- | --- |
-| `users` | `school_id` | Base user table for students, teachers, parents |
-| `students` | `school_id`, `class_id` | Student records (BUILT) |
 | `teachers` | `school_id`, `user_id` | Teacher records |
 | `parents` | `school_id`, `user_id` | Parent/guardian records |
-| `classes` | `school_id` | Grade/class definitions |
 | `sections` | `school_id`, `class_id` | Class sections |
 | `subjects` | `school_id` | Subject catalog |
 | `class_subjects` | `school_id`, `class_id`, `subject_id` | Which subjects per class |
@@ -261,13 +260,14 @@ All migrations live in `supabase/migrations/` and are executed with the service 
 ```
 supabase/
 └── migrations/
-    ├── 0001_initial_schema.sql   ✅ Applied — schools + school_admins + updated_at trigger
-    ├── 0002_enable_rls.sql        ✅ Applied — RLS + storage policies
-    ├── 0003_employees.sql        ✅ Applied — employees + employee_attachments tables
-    ├── 0006_classes.sql          ✅ Applied — classes table (name, fee, teacher, capacity)
-    ├── 0007_students.sql         ✅ Applied — students + student_attachments tables + storage buckets
-    ├── 0008_student_free_balance.sql ✅ Applied — is_free + previous_balance columns on students
-    └── ...
+    ├── 0001_initial_schema.sql         ✅ Applied — schools + school_admins + updated_at trigger
+    ├── 0002_rls_and_storage.sql         ✅ Applied — RLS + storage policies + school-logos bucket
+    ├── 0003_employees.sql              ✅ Applied — employees table + employee-photos bucket
+    ├── 0004_rules_and_regulations.sql   ✅ Applied — employee_rules + student_rules columns on schools
+    ├── 0005_employee_attachments.sql    ✅ Applied — employee_attachments table + employee-attachments bucket
+    ├── 0006_classes.sql                ✅ Applied — classes table (name, fee, teacher, capacity)
+    ├── 0007_students.sql               ✅ Applied — students + student_attachments tables + student-photos/student-attachments buckets
+    ├── 0008_student_free_balance.sql    ✅ Applied — is_free + previous_balance columns on students
 ```
 
 Run: `npm run db:migrate`
@@ -283,6 +283,11 @@ CREATE INDEX idx_employees_school_id ON employees(school_id);
 CREATE INDEX idx_employees_employee_code ON employees(employee_code);
 CREATE INDEX idx_employees_login_username ON employees(login_username);
 CREATE INDEX idx_employee_attachments_employee_id ON employee_attachments(employee_id);
+CREATE INDEX idx_classes_school_id ON classes(school_id);
+CREATE INDEX idx_students_school_id ON students(school_id);
+CREATE INDEX idx_students_class_id ON students(class_id);
+CREATE INDEX idx_students_registration_no ON students(registration_no);
+CREATE INDEX idx_student_attachments_student_id ON student_attachments(student_id);
 ```
 
 ---
@@ -300,3 +305,8 @@ CREATE INDEX idx_employee_attachments_employee_id ON employee_attachments(employ
 - **Audit log**: Create `audit_logs` table recording all mutations with actor + timestamp.
 - **Full-text search**: Add `tsvector` columns on `schools.name` for search.
 - **File storage**: Same Storage pattern for student photos, documents. Already in use for employee photos and attachments.
+- **Rules & Regulations**: The `/api/settings/rules-regulations/[schoolId]` endpoint allows admins to GET and PATCH `employee_rules` and `student_rules` text fields on the `schools` table. These are used in job offer letters and admission letters respectively. No separate table needed — the fields are columns on `schools`.
+- **Family grouping**: Students are auto-grouped into families by matching `father_nic`. The `/api/students/[schoolId]/families` endpoint queries all students with a non-empty `father_nic`, groups them, and returns only groups with 2+ siblings. No separate family table needed — the grouping is derived.
+- **Student promotion**: The `/api/students/[schoolId]/promote` endpoint bulk-updates `class_id` for selected students. Only active students (`is_active = true`) are promoted; inactive ones are silently skipped. No schema change needed — promotion is a simple `class_id` update.
+- **Student ID cards**: The `/api/students/id-cards/pdf` endpoint generates PDF ID cards server-side via Puppeteer. Supports three modes: all active students, filtered by class IDs (`classIds` query param), or individually selected (`ids` query param). Uses the same `IdCardTheme` type as employee ID cards. No schema change needed.
+- **Searchable fields**: The `getStudents` service function accepts an optional `searchFields` parameter to restrict which columns are searched. The student ID cards tab uses `searchFields=name,registration_no` to avoid matching by father name (which may be shared across students). Other features default to searching name, registration_no, father_name, and mobile.

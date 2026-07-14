@@ -23,6 +23,8 @@ import {
   FileText,
   Paperclip,
   CreditCard,
+  UsersRound,
+  ArrowUpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -55,6 +57,9 @@ const studentSubItems: SidebarSubItem[] = [
   { label: "Basic List", icon: Table, tab: "list" },
   { label: "Admission Letter", icon: FileText, tab: "admission" },
   { label: "Attachments", icon: Paperclip, tab: "attachments" },
+  { label: "Family", icon: UsersRound, tab: "family" },
+  { label: "Promote", icon: ArrowUpCircle, tab: "promote" },
+  { label: "ID Cards", icon: CreditCard, tab: "idcards" },
 ];
 
 const employeeSubItems: SidebarSubItem[] = [

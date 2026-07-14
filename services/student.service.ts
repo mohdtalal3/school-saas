@@ -36,6 +36,7 @@ export interface PaginationParams {
   page?: number;
   limit?: number;
   search?: string;
+  searchFields?: string[];
   classId?: string;
   active?: boolean | "all";
   isFree?: boolean;
@@ -73,8 +74,9 @@ export async function getStudents(
 
   if (params.search?.trim()) {
     const q = params.search.trim();
+    const fields = params.searchFields ?? ["name", "registration_no", "father_name", "mobile"];
     query = query.or(
-      `name.ilike.%${q}%,registration_no.ilike.%${q}%,father_name.ilike.%${q}%,mobile.ilike.%${q}%`
+      fields.map((f) => `${f}.ilike.%${q}%`).join(",")
     );
   }
 

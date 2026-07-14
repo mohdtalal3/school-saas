@@ -288,12 +288,8 @@ export function ClassManagement({ schoolId }: ClassManagementProps) {
   const createMutation = useMutation({
     mutationFn: (payload: Parameters<typeof createClassApi>[1]) =>
       createClassApi(schoolId, payload),
-    onSuccess: (created) => {
-      qc.setQueryData<ClassWithStats[]>(["classes", schoolId], (prev) =>
-        [...(prev ?? []), { ...created, boys: 0, girls: 0, total_students: 0 }].sort(
-          (a, b) => a.name.localeCompare(b.name)
-        )
-      );
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["classes", schoolId] });
       setMode(null);
       toast({ title: "Class created", variant: "success" });
     },
@@ -309,16 +305,8 @@ export function ClassManagement({ schoolId }: ClassManagementProps) {
   const updateMutation = useMutation({
     mutationFn: (payload: Partial<SchoolClass>) =>
       updateClassApi(schoolId, selected!.id, payload),
-    onSuccess: (updated) => {
-      qc.setQueryData<ClassWithStats[]>(["classes", schoolId], (prev) =>
-        (prev ?? [])
-          .map((c) =>
-            c.id === updated.id
-              ? { ...updated, boys: c.boys, girls: c.girls, total_students: c.total_students }
-              : c
-          )
-          .sort((a, b) => a.name.localeCompare(b.name))
-      );
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["classes", schoolId] });
       setMode(null);
       setSelected(null);
       toast({ title: "Class updated", variant: "success" });
@@ -335,9 +323,7 @@ export function ClassManagement({ schoolId }: ClassManagementProps) {
   const deleteMutation = useMutation({
     mutationFn: () => deleteClassApi(schoolId, selected!.id),
     onSuccess: () => {
-      qc.setQueryData<ClassWithStats[]>(["classes", schoolId], (prev) =>
-        (prev ?? []).filter((c) => c.id !== selected!.id)
-      );
+      qc.invalidateQueries({ queryKey: ["classes", schoolId] });
       setMode(null);
       setSelected(null);
       toast({ title: "Class removed", variant: "success" });

@@ -10,5 +10,3 @@ dist/
 .vercel
 .turbo
 next-env.d.ts
-context.md
-MEMORY.md

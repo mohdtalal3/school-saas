@@ -16,7 +16,8 @@
 | 5 | Admin Dashboard page | ✅ |
 | 6 | Institute Profile (logo upload, update) | ✅ |
 | 7 | Account Settings (currency, timezone) | ✅ |
-| 8 | Logout | ✅ |
+| 8 | Rules & Regulations (employee_rules, student_rules text editor) | ✅ |
+| 9 | Logout | ✅ |
 
 ### Phase 1 Architecture Decisions
 
@@ -45,6 +46,10 @@
 - ✅ Employee attachments (upload, download, delete)
 - ✅ Employee active/inactive toggle
 - ✅ Auto-generated employee codes and login usernames
+- ✅ Manage Login tab (username, password reset, login active toggle)
+- ✅ Basic List tab (DirectoryTable with CSV export — export selected, page, all, or by class)
+- ✅ Attachments tab (left panel employee list, right panel upload/download/delete)
+- ✅ Tab-based UI via URL `?tab=` (All, Basic List, Manage Login, Job Offer, Attachments, ID Cards)
 
 ### 2.3 ID Card Generation (COMPLETE)
 
@@ -54,6 +59,8 @@
 - ✅ Theme customization (accent, gold, text, bg colors)
 - ✅ Client-side iframe preview + download
 - ✅ Logo watermark on each card
+- ✅ All/Select mode with server-side search (debounced, 300ms)
+- ✅ PDF endpoint fetches only selected employees by ID (not all upfront)
 
 ### 2.4 Job Offer Letter (COMPLETE)
 
@@ -78,12 +85,17 @@
 - ✅ Class dropdown loads from classes API (fee shown, net fee calculated)
 - ✅ Photo upload via Supabase Storage (student-photos bucket)
 - ✅ Student attachments (birth certificate, CNIC, results, etc.) — student-attachments bucket
-- ✅ Search by name, registration no, father name, mobile
+- ✅ Search by name, registration no, father name, mobile (configurable via `searchFields`)
 - ✅ Filter by class
 - ✅ Filter by free education status
 - ✅ View details dialog with all fields
 - ✅ CSV bulk import (class selection, file upload, sample CSV download)
-- ⏳ CSV export
+- ✅ CSV export (DirectoryTable — export selected, page, all, or by class)
+- ✅ Family grouping (auto-group by father CNIC, search, expandable cards)
+- ✅ Promote students (bulk promote to target class, only active students, search & select)
+- ✅ Student ID Cards (Puppeteer PDF, CR80 portrait, All mode with class multi-select / Select mode with server-side search by name & reg no, theme customization, iframe preview)
+- ✅ Admission Letter (`@react-pdf/renderer`, SearchPicker → full-screen PDF viewer)
+- ✅ Tab-based UI via URL `?tab=` (All, Basic List, Admission Letter, Attachments, Family, Promote, ID Cards)
 - ⏳ Parent linkage
 - ⏳ Assign to section
 
