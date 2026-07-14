@@ -25,6 +25,8 @@ import {
   CreditCard,
   UsersRound,
   ArrowUpCircle,
+  Wallet,
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -62,6 +64,11 @@ const studentSubItems: SidebarSubItem[] = [
   { label: "ID Cards", icon: CreditCard, tab: "idcards" },
 ];
 
+const feeSubItems: SidebarSubItem[] = [
+  { label: "Fee Particulars", icon: Receipt, tab: "particulars" },
+  { label: "Invoice Generator", icon: FileText, tab: "invoices" },
+];
+
 const employeeSubItems: SidebarSubItem[] = [
   { label: "All Employees", icon: Users, tab: "all" },
   { label: "Basic List", icon: Table, tab: "list" },
@@ -94,18 +101,23 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
   const [employeesOpen, setEmployeesOpen] = React.useState(
     pathname?.startsWith("/school/employees") ?? false
   );
+  const [feesOpen, setFeesOpen] = React.useState(
+    pathname?.startsWith("/school/fees") ?? false
+  );
 
   React.useEffect(() => {
     // Auto-expand if you navigate into a sub-page elsewhere.
     if (pathname?.startsWith("/school/settings")) setSettingsOpen(true);
     if (pathname?.startsWith("/school/students")) setStudentsOpen(true);
     if (pathname?.startsWith("/school/employees")) setEmployeesOpen(true);
+    if (pathname?.startsWith("/school/fees")) setFeesOpen(true);
   }, [pathname]);
 
   const settingsActive = pathname?.startsWith("/school/settings") ?? false;
   const employeesActive = pathname?.startsWith("/school/employees") ?? false;
   const classesActive = pathname?.startsWith("/school/classes") ?? false;
   const studentsActive = pathname?.startsWith("/school/students") ?? false;
+  const feesActive = pathname?.startsWith("/school/fees") ?? false;
 
   return (
     <>
@@ -319,6 +331,68 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
           <p className="px-3 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
             Management
           </p>
+
+          {/* Fees — collapsible group */}
+          <button
+            type="button"
+            onClick={() => setFeesOpen((v) => !v)}
+            aria-expanded={feesOpen}
+            aria-controls="fees-group"
+            className={cn(
+              "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+              feesActive
+                ? "bg-sidebar-accent text-white"
+                : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white"
+            )}
+          >
+            <Wallet className="h-4 w-4" />
+            <span className="flex-1 text-left">Fees</span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 transition-transform duration-200",
+                feesOpen ? "rotate-180" : "rotate-0"
+              )}
+            />
+          </button>
+
+          <AnimatePresence initial={false}>
+            {feesOpen && (
+              <motion.div
+                id="fees-group"
+                key="fees-group"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: "easeInOut" }}
+                className="overflow-hidden"
+              >
+                <div className="space-y-1 ml-2 mt-1 border-l border-sidebar-border/60 pl-2 pb-1">
+                  {feeSubItems.map((item) => {
+                    const active = feesActive && (currentTab === item.tab || (!currentTab && item.tab === "particulars"));
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.tab}
+                        href={`/school/fees?tab=${item.tab}`}
+                        onClick={onClose}
+                        className={cn(
+                          "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                          active
+                            ? "bg-sidebar-accent text-white"
+                            : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white"
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span className="flex-1">{item.label}</span>
+                        {active && <ChevronRight className="h-4 w-4" />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <button
             type="button"
             onClick={() => setSettingsOpen((v) => !v)}

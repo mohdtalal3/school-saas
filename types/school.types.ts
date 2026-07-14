@@ -186,3 +186,67 @@ export interface NewStudentAttachment {
   size_bytes: number;
   label: string;
 }
+
+// ── Fee Particulars ───────────────────────────────────────────
+
+export interface FeeParticular {
+  id: string;
+  school_id: string;
+  label: string;
+  amount: number;
+  is_fixed: boolean;
+  source_type: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type NewFeeParticular = Omit<
+  FeeParticular,
+  "id" | "school_id" | "created_at" | "updated_at" | "is_active" | "sort_order"
+> & { sort_order?: number };
+
+export type UpdateFeeParticular = Partial<
+  Omit<FeeParticular, "id" | "school_id" | "created_at" | "updated_at">
+>;
+
+// ── Fee Invoices ──────────────────────────────────────────────
+
+export interface InvoiceParticular {
+  label: string;
+  amount: number;
+  is_fixed: boolean;
+  source_type: string | null;
+}
+
+export interface FeeInvoice {
+  id: string;
+  school_id: string;
+  invoice_no: string;
+  student_id: string;
+  student_name: string;
+  class_id: string | null;
+  class_name: string | null;
+  registration_no: string | null;
+  fee_month: string;
+  due_date: string;
+  fine_after_due: number;
+  particulars: InvoiceParticular[];
+  total_amount: number;
+  status: "unpaid" | "partial" | "paid";
+  father_name: string | null;
+  father_nic: string | null;
+  mobile: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GenerateInvoicePayload {
+  mode: "class" | "student" | "all-classes";
+  class_id?: string;
+  student_ids?: string[];
+  fee_month: string;
+  due_date: string;
+  fine_after_due?: number;
+}

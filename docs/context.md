@@ -25,10 +25,13 @@ Built and working:
 - **Job Offer Letter** — `@react-pdf/renderer` based, premium template with navy/gold color scheme matching ID cards, school logo watermark (centered, fixed overlay), 2-page letter (particulars + terms), signature blocks, bottom accent strip
 - **Classes** — full CRUD (create, list, edit, delete), card grid view with boys/girls counts, enrollment progress bar, class name + fee + annual_dues + class teacher + capacity fields, empty state prompting to create first class
 - **Students** — full CRUD (create, list, edit, delete, view), card grid view with photo/class/fee, class dropdown with fee display, auto-generated registration no, photo upload, student attachments (birth cert, CNIC, results), search by name/reg no/father/mobile, filter by class, view details dialog with all fields, Excel bulk import (styled template with Instructions sheet), family grouping (auto-group by father CNIC), promote students (bulk class update), student ID cards
+- **Fee Particulars** — configurable fee line items per school, 8 default particulars seeded on first access (5 fixed auto-resolved from class/student data, 3 custom with user-set amounts), add/edit/delete custom particulars, tab-based UI via URL `?tab=particulars`
+- **Fee Invoice Generator** — generate fee invoices class-wise, student-wise, or all-classes at once; auto-sequential invoice numbers (INV-00001), particulars resolved from fee particulars config, PDF generation via Puppeteer (2 invoices per A4 page), search/filter/delete invoices
 
 Not yet built (Phase 2/3):
 - Teacher / Parent / Student portals (role cards exist in the login UI but show a "coming soon" toast)
-- Attendance, Exams, Fees, Teachers/Parents CRUD
+- Attendance, Exams, Teachers/Parents CRUD
+- Fee payment recording, outstanding reports
 - Subscription billing, notifications, reports, i18n, RBAC
 
 ---
@@ -124,6 +127,7 @@ npm run dev          # http://localhost:3000
 | `/school/classes` | Classes management — card grid, create/edit/delete, boys/girls counts, progress bar |
 | `/school/students` | Student management — tabs: All Students, Basic List, Admission Letter, Attachments, Family, Promote, ID Cards |
 | `/school/students/admission-letter/[studentId]` | Admission letter PDF viewer (full-screen) |
+| `/school/fees` | Fee management — tabs: Fee Particulars, Invoice Generator |
 | `/master-login` | **Hidden** — type URL directly. Master super-admin login (creates/manages schools). Not linked anywhere in the UI. |
 | `/master` | Master dashboard |
 | `/master/create-school` | Create school + first admin |
@@ -211,12 +215,18 @@ app/
     │   ├── [schoolId]/families/route.ts                 GET — family grouping by father_nic
     │   ├── [schoolId]/promote/route.ts                  POST — bulk promote students to target class
     │   └── id-cards/pdf/route.ts                        GET — Puppeteer Student ID Card PDF generation
+    ├── fees/
+    │   ├── [schoolId]/particulars/route.ts              GET list, POST create (seeds defaults if empty)
+    │   ├── [schoolId]/particulars/[particularId]/route.ts  PATCH, DELETE
+    │   ├── [schoolId]/invoices/route.ts              GET list (search, classId, feeMonth, status), POST generate (class/student/all-classes)
+    │   ├── [schoolId]/invoices/[invoiceId]/route.ts  DELETE
+    │   └── invoices/pdf/route.ts                     GET — Puppeteer Fee Invoice PDF (2 per A4 page)
 
 components/
 ├── providers.tsx            QueryClientProvider + ToastProvider (root)
 ├── layout/
 │   ├── admin-shell.tsx       Client context provider (school, sidebar state, logout) + layout
-│   ├── admin-sidebar.tsx     ★ Collapsible sidebar groups (Students, Employees, Settings); tab-based sub-items; mobile overlay
+│   ├── admin-sidebar.tsx     ★ Collapsible sidebar groups (Students, Employees, Fees, Settings); tab-based sub-items; mobile overlay
 │   └── admin-topbar.tsx      Breadcrumb + school badge + admin avatar + mobile menu button
 ├── layout/master-navbar.tsx
 └── ui/                       button, input, label, select, card, avatar, dropdown-menu, textarea, separator, toast,
@@ -262,6 +272,12 @@ features/
 │   ├── student-id-cards-tab.tsx   Student ID card UI — All mode (class multi-select) / Select mode (server-side search), theme, preview
 │   └── student-id-card-html.ts    HTML template for student ID cards (same CR80 layout, student fields)
 
+fees/
+├── fee-management.tsx              Main page — tab routing via ?tab=
+├── fee-particulars-tab.tsx         Fee particulars config — list, add, edit, delete; fixed vs custom line items
+├── fee-invoice-generator-tab.tsx   Invoice generator — class/student/all-classes mode, form, generate, PDF preview/download
+└── invoice-html.ts                 HTML template for fee invoices (2 per A4 page, Puppeteer)
+
 lib/
 ├── env.ts                    Zod-validated env access
 ├── api-response.ts           ApiResponse type + AppError classes
@@ -275,14 +291,17 @@ services/                     (business logic; no JSX)
 ├── settings.service.ts        getInstituteProfile, updateInstituteProfile, uploadSchoolLogo, getAccountSettings, updateAccountSettings
 ├── employee.service.ts       getEmployees, getEmployeeById, createEmployee, updateEmployee, deleteEmployee
 ├── class.service.ts          getClasses, getClassById, createClass, updateClass, deleteClass
-└── student.service.ts        getStudents (with searchFields), getStudentById, createStudent, updateStudent, deleteStudent,
+├── student.service.ts        getStudents (with searchFields), getStudentById, createStudent, updateStudent, deleteStudent,
                                 getStudentAttachments, uploadStudentAttachment, deleteStudentAttachment,
                                 uploadStudentPhoto, importStudents, getFamilies, promoteStudents
+└── fee.service.ts            getFeeParticulars (auto-seeds defaults), createFeeParticular, updateFeeParticular, deleteFeeParticular
+└── fee-invoice.service.ts    generateInvoices (class/student/all-classes), getInvoices, getInvoicesByIds, getInvoicesByClassAndMonth, getInvoicesByMonth, deleteInvoice
 
 types/
 ├── school.types.ts           School, SchoolAdmin, Employee, NewEmployee, UpdateEmployee, NewSchool, UpdateSchool,
                                 SchoolClass, NewClass, UpdateClass, ClassWithStats, Student, NewStudent, UpdateStudent,
-                                StudentWithClass, StudentAttachment
+                                StudentWithClass, StudentAttachment, FeeParticular, NewFeeParticular, UpdateFeeParticular,
+                                FeeInvoice, InvoiceParticular, GenerateInvoicePayload
 └── api.types.ts
 
 supabase/
@@ -295,6 +314,8 @@ supabase/
     ├── 0007_students.sql             students + student_attachments tables + storage buckets
     ├── 0008_student_free_balance.sql  is_free + previous_balance columns on students
     ├── 0009_annual_dues.sql            annual_dues on classes + annual_dues_discount + previous_annual_due on students
+    ├── 0010_fee_particulars.sql           fee_particulars table (label, amount, is_fixed, source_type, sort_order)
+    ├── 0011_fee_invoices.sql              fee_invoices table (invoice_no, student, class, particulars JSONB, total, status)
     └── ...
 ```
 
@@ -361,6 +382,61 @@ Attachments uploaded for employees (documents, certificates, etc.). Stored in Su
 ### `student_attachments`
 Documents uploaded for students (birth certificate, CNIC/B-Form, previous result, medical, etc.). Stored in Supabase Storage bucket `student-attachments`.
 
+### `fee_particulars`
+Configurable fee line items per school. Seeded with 8 defaults on first access.
+
+```sql
+CREATE TABLE fee_particulars (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  school_id     UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  label         TEXT NOT NULL,
+  amount        NUMERIC(12,2) NOT NULL DEFAULT 0,
+  is_fixed      BOOLEAN NOT NULL DEFAULT false,
+  source_type   TEXT,
+  sort_order    INTEGER NOT NULL DEFAULT 0,
+  is_active     BOOLEAN NOT NULL DEFAULT true,
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  updated_at    TIMESTAMPTZ DEFAULT now()
+);
+```
+
+- **Fixed particulars** (`is_fixed = true`): amount is auto-resolved from class/student data at fee calculation time. `source_type` identifies the source field (e.g. `class.fee`, `student.previous_balance`, `student.discount`, `student.annual_dues_discount`, `class.annual_dues`).
+- **Custom particulars** (`is_fixed = false`): user sets a fixed `amount`. Users can add/edit/delete these.
+- **Default seed** (8 items): MONTHLY TUITION FEE (fixed), ADMISSION FEE (custom), REGISTRATION FEE (custom), FINE (custom), PREVIOUS BALANCE (fixed), DISCOUNT IN FEE (fixed), ANNUAL DUES DISCOUNT (fixed), ANNUAL DUE (fixed).
+- Unique constraint on `(school_id, lower(label))`.
+
+### `fee_invoices`
+Generated fee invoices per student. Each invoice has a unique `invoice_no` (INV-00001 format, sequential per school).
+
+```sql
+CREATE TABLE fee_invoices (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  school_id       UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  invoice_no      TEXT NOT NULL,
+  student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  student_name    TEXT NOT NULL,
+  class_id        UUID REFERENCES classes(id) ON DELETE SET NULL,
+  class_name      TEXT,
+  registration_no TEXT,
+  fee_month       TEXT NOT NULL,
+  due_date        DATE NOT NULL,
+  fine_after_due  NUMERIC(12,2) NOT NULL DEFAULT 0,
+  particulars     JSONB NOT NULL DEFAULT '[]',
+  total_amount    NUMERIC(12,2) NOT NULL DEFAULT 0,
+  status          TEXT NOT NULL DEFAULT 'unpaid',
+  father_name     TEXT,
+  mobile          TEXT,
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  updated_at      TIMESTAMPTZ DEFAULT now()
+);
+```
+
+- **invoice_no**: unique per school, auto-generated as `INV-00001` (sequential).
+- **particulars**: JSONB array of `{ label, amount, is_fixed, source_type }` — resolved at generation time from fee_particulars config.
+- **total_amount**: calculated from particulars (discounts subtracted).
+- **status**: `unpaid` | `partial` | `paid`.
+- Unique constraint on `(school_id, invoice_no)`.
+
 ### RLS
 Enabled on all tables. Public-read policies + service-role bypass for trusted writes. Policies will tighten once school-admin login RBAC lands.
 
@@ -372,7 +448,7 @@ Bucket `student-photos` — for student profile photos.
 Bucket `student-attachments` — for student documents (birth cert, CNIC, results, etc.).
 
 ### Reserved (schema-ready, not built)
-teachers, parents, sections, subjects, attendance, exams, grades, fee_structure, invoices, payments, subscriptions, plans — all FK-linked to `school_id`.
+teachers, parents, sections, subjects, attendance, exams, grades, invoices, payments, subscriptions, plans — all FK-linked to `school_id`.
 
 See `docs/database.md` for full DDL and `docs/roadmap.md` for the build order.
 

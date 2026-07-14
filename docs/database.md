@@ -194,6 +194,63 @@ CREATE TABLE student_attachments (
 );
 ```
 
+### `fee_particulars`
+
+Configurable fee line items per school. Seeded with 8 defaults on first access.
+
+```sql
+CREATE TABLE fee_particulars (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  school_id     UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  label         TEXT NOT NULL,
+  amount        NUMERIC(12,2) NOT NULL DEFAULT 0,
+  is_fixed      BOOLEAN NOT NULL DEFAULT false,
+  source_type   TEXT,
+  sort_order    INTEGER NOT NULL DEFAULT 0,
+  is_active     BOOLEAN NOT NULL DEFAULT true,
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  updated_at    TIMESTAMPTZ DEFAULT now()
+);
+```
+
+- **Fixed particulars** (`is_fixed = true`): amount is auto-resolved from class/student data at fee calculation time. `source_type` identifies the source field (e.g. `class.fee`, `student.previous_balance`, `student.discount`, `student.annual_dues_discount`, `class.annual_dues`).
+- **Custom particulars** (`is_fixed = false`): user sets a fixed `amount`. Users can add/edit/delete these.
+- **Default seed** (8 items): MONTHLY TUITION FEE (fixed), ADMISSION FEE (custom), REGISTRATION FEE (custom), FINE (custom), PREVIOUS BALANCE (fixed), DISCOUNT IN FEE (fixed), ANNUAL DUES DISCOUNT (fixed), ANNUAL DUE (fixed).
+- Unique constraint on `(school_id, lower(label))`.
+
+### `fee_invoices`
+
+Generated fee invoices per student. Each invoice has a unique `invoice_no` (INV-00001 format, sequential per school).
+
+```sql
+CREATE TABLE fee_invoices (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  school_id       UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  invoice_no      TEXT NOT NULL,
+  student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  student_name    TEXT NOT NULL,
+  class_id        UUID REFERENCES classes(id) ON DELETE SET NULL,
+  class_name      TEXT,
+  registration_no TEXT,
+  fee_month       TEXT NOT NULL,
+  due_date        DATE NOT NULL,
+  fine_after_due  NUMERIC(12,2) NOT NULL DEFAULT 0,
+  particulars     JSONB NOT NULL DEFAULT '[]',
+  total_amount    NUMERIC(12,2) NOT NULL DEFAULT 0,
+  status          TEXT NOT NULL DEFAULT 'unpaid',
+  father_name     TEXT,
+  mobile          TEXT,
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  updated_at      TIMESTAMPTZ DEFAULT now()
+);
+```
+
+- **invoice_no**: unique per school, auto-generated as `INV-00001` (sequential).
+- **particulars**: JSONB array of `{ label, amount, is_fixed, source_type }` — resolved at generation time from fee_particulars config.
+- **total_amount**: calculated from particulars (discounts subtracted).
+- **status**: `unpaid` | `partial` | `paid`.
+- Unique constraint on `(school_id, invoice_no)`.
+
 ---
 
 ## Future-Ready Tables (Schema Reserved)
@@ -210,7 +267,6 @@ These tables are **not yet created** but the foreign key relationships and namin
 | `attendance` | `school_id`, `student_id`, `class_id` | Daily attendance |
 | `exams` | `school_id`, `class_id` | Exam definitions |
 | `grades` | `school_id`, `exam_id`, `student_id` | Exam results |
-| `fee_structure` | `school_id`, `class_id` | Fee rules per class |
 | `invoices` | `school_id`, `student_id` | Fee invoices |
 | `payments` | `school_id`, `invoice_id` | Payment records |
 | `subscriptions` | `school_id`, `plan_id` | Subscription per school |
@@ -272,6 +328,8 @@ supabase/
     ├── 0007_students.sql               ✅ Applied — students + student_attachments tables + student-photos/student-attachments buckets
     ├── 0008_student_free_balance.sql    ✅ Applied — is_free + previous_balance columns on students
     ├── 0009_annual_dues.sql              ✅ Applied — annual_dues on classes + annual_dues_discount + previous_annual_due on students
+    ├── 0010_fee_particulars.sql           ✅ Applied — fee_particulars table (label, amount, is_fixed, source_type, sort_order)
+    ├── 0011_fee_invoices.sql              ✅ Applied — fee_invoices table (invoice_no, student, class, particulars JSONB, total, status)
 ```
 
 Run: `npm run db:migrate`
@@ -292,6 +350,14 @@ CREATE INDEX idx_students_school_id ON students(school_id);
 CREATE INDEX idx_students_class_id ON students(class_id);
 CREATE INDEX idx_students_registration_no ON students(registration_no);
 CREATE INDEX idx_student_attachments_student_id ON student_attachments(student_id);
+CREATE INDEX idx_fee_particulars_school_id ON fee_particulars(school_id);
+CREATE INDEX idx_fee_particulars_sort_order ON fee_particulars(school_id, sort_order);
+CREATE INDEX idx_fee_invoices_school_id ON fee_invoices(school_id);
+CREATE INDEX idx_fee_invoices_student_id ON fee_invoices(student_id);
+CREATE INDEX idx_fee_invoices_class_id ON fee_invoices(class_id);
+CREATE INDEX idx_fee_invoices_invoice_no ON fee_invoices(invoice_no);
+CREATE INDEX idx_fee_invoices_fee_month ON fee_invoices(school_id, fee_month);
+CREATE INDEX idx_fee_invoices_status ON fee_invoices(school_id, status);
 ```
 
 ---

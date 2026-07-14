@@ -121,12 +121,13 @@
 - Mark entry.
 - Report cards.
 
-### 2.11 Fees (PENDING)
+### 2.11 Fees (IN PROGRESS)
 
-- Fee structure per class.
-- Invoice generation.
-- Payment recording.
-- Outstanding reports.
+- ✅ Fee Particulars — configurable fee line items per school (8 defaults seeded: 5 fixed auto-resolved from class/student data, 3 custom with user-set amounts), add/edit/delete custom particulars, tab-based UI via URL `?tab=particulars`
+- ✅ Invoice Generator — generate fee invoices class-wise, student-wise, or all-classes at once; auto-sequential invoice numbers (INV-00001), particulars resolved from fee particulars config, PDF generation via Puppeteer (2 invoices per A4 page), search/filter/delete invoices, unique invoice_no for cross-module reference
+- ⏳ Fee structure per class
+- ⏳ Payment recording
+- ⏳ Outstanding reports
 
 ---
 

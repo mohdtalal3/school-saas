@@ -53,6 +53,8 @@ A single Next.js 15 (App Router) application that hosts:
                   │   - classes                │
                   │   - students               │
                   │   - student_attachments    │
+                  │   - fee_particulars        │
+                  │   - fee_invoices           │
                   │   - RLS enabled            │
                   │   - Storage (logos, photos) │
                   └────────────────────────────┘
@@ -82,6 +84,8 @@ A single Next.js 15 (App Router) application that hosts:
   - `schoolService.create({ name, adminEmail, adminPassword })`
   - `settingsService.updateInstituteProfile(schoolId, payload)`
   - `employeeService.getEmployees(schoolId)` / `createEmployee` / `updateEmployee` / `deleteEmployee`
+  - `feeService.getFeeParticulars(schoolId)` / `createFeeParticular` / `updateFeeParticular` / `deleteFeeParticular`
+  - `feeInvoiceService.generateInvoices(schoolId, payload)` / `getInvoices` / `deleteInvoice`
 - Errors thrown as `AppError` subclasses; the API layer converts them to JSON responses.
 
 ### 4. Data Layer (`lib/supabase`)
@@ -267,3 +271,12 @@ All list views and search-driven features follow the same pattern:
 | `promote-tab.tsx` | Promote students tab — table with checkboxes, class filter, search, bulk promote to target class |
 | `student-id-cards-tab.tsx` | Student ID card UI — All mode (class multi-select) / Select mode (server-side search), theme picker, iframe preview, download |
 | `student-id-card-html.ts` | HTML template for student ID cards (same CR80 layout, student-specific fields: Reg No, Class, Father, DOB, Blood) |
+
+### Key feature directories (`features/fees/`)
+
+| File | Purpose |
+| --- | --- |
+| `fee-management.tsx` | Main fee page — tab routing via `?tab=` URL param |
+| `fee-particulars-tab.tsx` | Fee particulars config — list, add, edit, delete; fixed vs custom line items; auto-seeded defaults |
+| `fee-invoice-generator-tab.tsx` | Invoice generator — class/student/all-classes mode, form, generate, PDF preview/download |
+| `invoice-html.ts` | HTML template for fee invoices (2 per A4 page, Puppeteer) |
