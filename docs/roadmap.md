@@ -47,7 +47,7 @@
 - ✅ Employee active/inactive toggle
 - ✅ Auto-generated employee codes and login usernames
 - ✅ Manage Login tab (username, password reset, login active toggle)
-- ✅ Basic List tab (DirectoryTable with CSV export — export selected, page, all, or by class)
+- ✅ Basic List tab (DirectoryTable with Excel export — styled with colors, borders, alternating rows; export selected, page, all, or by class)
 - ✅ Attachments tab (left panel employee list, right panel upload/download/delete)
 - ✅ Tab-based UI via URL `?tab=` (All, Basic List, Manage Login, Job Offer, Attachments, ID Cards)
 
@@ -73,7 +73,7 @@
 ### 2.5 Classes & Sections (IN PROGRESS)
 
 - ✅ Class CRUD (create, list, edit, delete) — card view with boys/girls counts, progress bar
-- ✅ Class fields: name, monthly fee, class teacher, capacity
+- ✅ Class fields: name, monthly fee, annual dues, class teacher, capacity
 - ✅ Empty state prompts to create first class
 - ⏳ Sections CRUD (assign section teachers)
 - ⏳ Assign subjects to classes
@@ -81,7 +81,7 @@
 ### 2.6 Students (IN PROGRESS)
 
 - ✅ Student CRUD (create, list, edit, delete, view) — card grid view with photo, class, fee
-- ✅ Student fields: name, photo, registration no (auto), date of admission, class dropdown, discount, mobile, DOB, gender, identification mark, blood group, disease, birth form ID, additional note, orphan, OSC, is_free, previous_balance, religion, family, total siblings, address, father info
+- ✅ Student fields: name, photo, registration no (auto), date of admission, class dropdown, discount, mobile, DOB, gender, identification mark, blood group, disease, birth form ID, additional note, orphan, OSC, is_free, previous_balance, annual_dues_discount, previous_annual_due, religion, family, total siblings, address, father info
 - ✅ Class dropdown loads from classes API (fee shown, net fee calculated)
 - ✅ Photo upload via Supabase Storage (student-photos bucket)
 - ✅ Student attachments (birth certificate, CNIC, results, etc.) — student-attachments bucket
@@ -89,8 +89,8 @@
 - ✅ Filter by class
 - ✅ Filter by free education status
 - ✅ View details dialog with all fields
-- ✅ CSV bulk import (class selection, file upload, sample CSV download)
-- ✅ CSV export (DirectoryTable — export selected, page, all, or by class)
+- ✅ Excel bulk import (class selection, .xlsx file upload, styled sample Excel template with Instructions sheet)
+- ✅ Excel export (DirectoryTable — styled .xlsx with colored headers, alternating rows, borders; export selected, page, all, or by class)
 - ✅ Family grouping (auto-group by father CNIC, search, expandable cards)
 - ✅ Promote students (bulk promote to target class, only active students, search & select)
 - ✅ Student ID Cards (Puppeteer PDF, CR80 portrait, All mode with class multi-select / Select mode with server-side search by name & reg no, theme customization, iframe preview)

@@ -258,8 +258,8 @@ All list views and search-driven features follow the same pattern:
 | --- | --- |
 | `student-form.tsx` | Add/edit student form (RHF + Zod) |
 | `student-management.tsx` | Main student page — card grid, filters, dialogs |
-| `student-directory-tab.tsx` | Basic List tab — paginated table with CSV export |
-| `import-students-dialog.tsx` | CSV bulk import dialog — class select, file upload, sample CSV download |
+| `student-directory-tab.tsx` | Basic List tab — paginated table with Excel export (styled) |
+| `import-students-dialog.tsx` | Excel bulk import dialog — class select, .xlsx file upload, styled sample Excel template (2 sheets: Students + Instructions) |
 | `admission-letter-tab.tsx` | Admission letter generation tab (SearchPicker → PDF viewer) |
 | `admission-letter-pdf.tsx` | `@react-pdf/renderer` Admission Letter document |
 | `admission-letter-pdf-viewer.tsx` | Client-side `PDFViewer` wrapper |

@@ -123,6 +123,7 @@ CREATE TABLE classes (
   school_id     UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
   name          TEXT NOT NULL,
   fee           NUMERIC(12,2) NOT NULL DEFAULT 0,
+  annual_dues   NUMERIC(12,2) NOT NULL DEFAULT 0,
   class_teacher TEXT,
   capacity      INTEGER NOT NULL DEFAULT 50,
   is_active     BOOLEAN NOT NULL DEFAULT true,
@@ -161,6 +162,8 @@ CREATE TABLE students (
   is_osc          BOOLEAN NOT NULL DEFAULT false,
   is_free         BOOLEAN NOT NULL DEFAULT false,
   previous_balance NUMERIC(12,2) NOT NULL DEFAULT 0,
+  annual_dues_discount NUMERIC(12,2) NOT NULL DEFAULT 0,
+  previous_annual_due NUMERIC(12,2) NOT NULL DEFAULT 0,
   religion        TEXT,
   family          TEXT,
   total_siblings  INTEGER NOT NULL DEFAULT 0,
@@ -268,6 +271,7 @@ supabase/
     ├── 0006_classes.sql                ✅ Applied — classes table (name, fee, teacher, capacity)
     ├── 0007_students.sql               ✅ Applied — students + student_attachments tables + student-photos/student-attachments buckets
     ├── 0008_student_free_balance.sql    ✅ Applied — is_free + previous_balance columns on students
+    ├── 0009_annual_dues.sql              ✅ Applied — annual_dues on classes + annual_dues_discount + previous_annual_due on students
 ```
 
 Run: `npm run db:migrate`

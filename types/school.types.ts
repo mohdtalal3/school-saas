@@ -92,6 +92,7 @@ export interface SchoolClass {
   school_id: string;
   name: string;
   fee: number;
+  annual_dues: number;
   class_teacher: string | null;
   capacity: number;
   is_active: boolean;
@@ -137,6 +138,8 @@ export interface Student {
   is_osc: boolean;
   is_free: boolean;
   previous_balance: number;
+  annual_dues_discount: number;
+  previous_annual_due: number;
   religion: string | null;
   family: string | null;
   total_siblings: number;

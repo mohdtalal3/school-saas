@@ -190,6 +190,8 @@ export async function createStudent(
     is_osc: input.is_osc ?? false,
     is_free: input.is_free ?? false,
     previous_balance: input.previous_balance ?? 0,
+    annual_dues_discount: input.annual_dues_discount ?? 0,
+    previous_annual_due: input.previous_annual_due ?? 0,
     religion: input.religion ?? null,
     family: input.family ?? null,
     total_siblings: input.total_siblings ?? 0,

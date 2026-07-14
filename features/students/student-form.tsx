@@ -65,6 +65,8 @@ const schema = z.object({
   is_osc: z.boolean().optional(),
   is_free: z.boolean().optional(),
   previous_balance: z.string().optional(),
+  annual_dues_discount: z.string().optional(),
+  previous_annual_due: z.string().optional(),
   religion: z.string().optional(),
   family: z.string().optional(),
   total_siblings: z.string().optional(),
@@ -164,6 +166,8 @@ export function StudentForm({
           is_osc: initialData.is_osc,
           is_free: initialData.is_free,
           previous_balance: String(initialData.previous_balance),
+          annual_dues_discount: String(initialData.annual_dues_discount ?? 0),
+          previous_annual_due: String(initialData.previous_annual_due ?? 0),
           religion: initialData.religion ?? "",
           family: initialData.family ?? "",
           total_siblings: String(initialData.total_siblings),
@@ -190,6 +194,8 @@ export function StudentForm({
           is_osc: false,
           is_free: false,
           previous_balance: "0",
+          annual_dues_discount: "0",
+          previous_annual_due: "0",
           religion: "Islam",
           family: "",
           total_siblings: "0",
@@ -295,6 +301,8 @@ export function StudentForm({
         is_osc: v.is_osc ?? false,
         is_free: v.is_free ?? false,
         previous_balance: Number(v.previous_balance) || 0,
+        annual_dues_discount: Number(v.annual_dues_discount) || 0,
+        previous_annual_due: Number(v.previous_annual_due) || 0,
         religion: v.religion || null,
         family: v.family || null,
         total_siblings: Number(v.total_siblings) || 0,
@@ -491,6 +499,37 @@ export function StudentForm({
             />
             Free Education
           </label>
+        </div>
+      </div>
+
+      {/* Annual Dues Discount + Previous Annual Due */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="annual_dues_discount">Discount in Annual Dues</Label>
+          <Input
+            id="annual_dues_discount"
+            type="number"
+            step="0.01"
+            placeholder="0"
+            {...register("annual_dues_discount")}
+          />
+          <p className="text-[10px] text-muted-foreground">
+            Discount on the class annual dues amount.
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="previous_annual_due">Previous Annual Due</Label>
+          <Input
+            id="previous_annual_due"
+            type="number"
+            step="0.01"
+            placeholder="0"
+            {...register("previous_annual_due")}
+          />
+          <p className="text-[10px] text-muted-foreground">
+            Outstanding annual dues from previous year(s).
+          </p>
         </div>
       </div>
 

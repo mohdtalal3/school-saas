@@ -168,44 +168,82 @@ export function DirectoryTable<T extends { id: string; is_active: boolean }>({
 
   const [exporting, setExporting] = React.useState(false);
 
-  function downloadCsv(rowsToExport: T[], filenameSuffix: string) {
+  function downloadExcel(rowsToExport: T[], filenameSuffix: string) {
     if (rowsToExport.length === 0) {
       toast({ title: "Nothing to export", variant: "destructive" });
       return;
     }
 
+    const XLSX = require("xlsx-js-style");
+
     const headers = exportColumns.map((c) => c.label);
-    const csvLines: string[] = [headers.join(",")];
+    const aoa: (string | number)[][] = [headers];
 
     for (const row of rowsToExport) {
       const values = exportColumns.map((c) => {
         const val = c.exportValue
           ? c.exportValue(row)
           : String((row as Record<string, unknown>)[c.key] ?? "");
-        const str = val === null || val === undefined ? "" : String(val);
-        if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-          return `"${str.replace(/"/g, '""')}"`;
-        }
-        return str;
+        return val === null || val === undefined ? "" : val;
       });
-      csvLines.push(values.join(","));
+      aoa.push(values as (string | number)[]);
     }
 
-    const csv = csvLines.join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${exportFilename}-${filenameSuffix}-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    // Style header row
+    for (let c = 0; c < headers.length; c++) {
+      const cellRef = XLSX.utils.encode_cell({ r: 0, c });
+      if (ws[cellRef]) {
+        ws[cellRef].s = {
+          fill: { fgColor: { rgb: "4F46E5" } },
+          font: { bold: true, color: { rgb: "FFFFFF" }, sz: 12 },
+          alignment: { horizontal: "center", vertical: "center", wrapText: true },
+          border: {
+            top: { style: "thin", color: { rgb: "4F46E5" } },
+            bottom: { style: "thin", color: { rgb: "4F46E5" } },
+            left: { style: "thin", color: { rgb: "4F46E5" } },
+            right: { style: "thin", color: { rgb: "4F46E5" } },
+          },
+        };
+      }
+    }
+
+    // Style data rows
+    for (let r = 1; r < aoa.length; r++) {
+      for (let c = 0; c < headers.length; c++) {
+        const cellRef = XLSX.utils.encode_cell({ r, c });
+        if (ws[cellRef]) {
+          ws[cellRef].s = {
+            fill: { fgColor: { rgb: r % 2 === 0 ? "F3F4F6" : "FFFFFF" } },
+            font: { color: { rgb: "374151" }, sz: 11 },
+            alignment: { vertical: "center", wrapText: true },
+            border: {
+              top: { style: "thin", color: { rgb: "E5E7EB" } },
+              bottom: { style: "thin", color: { rgb: "E5E7EB" } },
+              left: { style: "thin", color: { rgb: "E5E7EB" } },
+              right: { style: "thin", color: { rgb: "E5E7EB" } },
+            },
+          };
+        }
+      }
+    }
+
+    // Set column widths
+    ws["!cols"] = headers.map((h) => ({ wch: Math.max(h.length + 4, 16) }));
+    // Set row heights
+    ws["!rows"] = [{ hpt: 32 }, ...Array(aoa.length - 1).fill({ hpt: 24 })];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Export");
+    XLSX.writeFile(wb, `${exportFilename}-${filenameSuffix}-${new Date().toISOString().split("T")[0]}.xlsx`);
   }
 
-  function exportCsv(selectedOnly: boolean) {
+  function exportExcel(selectedOnly: boolean) {
     const rowsToExport = selectedOnly
       ? rows.filter((r) => selectedIds.has(r.id))
       : rows;
-    downloadCsv(rowsToExport, selectedOnly ? "selected" : "page");
+    downloadExcel(rowsToExport, selectedOnly ? "selected" : "page");
   }
 
   async function exportAll() {
@@ -218,7 +256,7 @@ export function DirectoryTable<T extends { id: string; is_active: boolean }>({
         active: activeParam,
         classId: classId !== "all" ? classId : undefined,
       });
-      downloadCsv(result.data, "all");
+      downloadExcel(result.data, "all");
       toast({ title: `Exported ${result.data.length} ${entityLabel}`, variant: "success" });
     } catch (e) {
       toast({
@@ -241,7 +279,7 @@ export function DirectoryTable<T extends { id: string; is_active: boolean }>({
         active: "all",
         classId: clsId,
       });
-      downloadCsv(result.data, `class-${clsName}`);
+      downloadExcel(result.data, `class-${clsName}`);
       toast({ title: `Exported ${result.data.length} students from ${clsName}`, variant: "success" });
     } catch (e) {
       toast({
@@ -323,7 +361,7 @@ export function DirectoryTable<T extends { id: string; is_active: boolean }>({
           variant="outline"
           size="sm"
           className="gap-1.5"
-          onClick={() => exportCsv(true)}
+          onClick={() => exportExcel(true)}
           disabled={selectedIds.size === 0}
         >
           <Download className="h-3.5 w-3.5" />
@@ -333,7 +371,7 @@ export function DirectoryTable<T extends { id: string; is_active: boolean }>({
           variant="outline"
           size="sm"
           className="gap-1.5"
-          onClick={() => exportCsv(false)}
+          onClick={() => exportExcel(false)}
         >
           <Download className="h-3.5 w-3.5" />
           Export page

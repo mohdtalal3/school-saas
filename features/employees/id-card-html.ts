@@ -271,7 +271,7 @@ export function buildIdCardsHtml(
     box-shadow: 0 ${px(6)} ${px(14)} rgba(0,0,0,.15);
     flex: 0 0 auto;
   }
-  .photo img { width: 100%; height: 100%; object-fit: cover; }
+  .photo img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
   .photo-initial {
     width: 100%; height: 100%;
     display: flex; align-items: center; justify-content: center;

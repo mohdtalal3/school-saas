@@ -97,6 +97,7 @@ export async function createClass(
     school_id: schoolId,
     name: input.name,
     fee: input.fee,
+    annual_dues: input.annual_dues ?? 0,
     class_teacher: input.class_teacher ?? null,
     capacity: input.capacity ?? 50,
     is_active: true,

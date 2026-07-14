@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 const schema = z.object({
   name: z.string().min(1, "Class name is required"),
   fee: z.string().min(1, "Fee is required"),
+  annual_dues: z.string().optional(),
   class_teacher: z.string().optional(),
   capacity: z.string().optional(),
 });
@@ -28,6 +29,7 @@ interface ClassFormProps {
   onSubmit: (values: {
     name: string;
     fee: number;
+    annual_dues: number;
     class_teacher: string | null;
     capacity: number;
   }) => Promise<SchoolClass>;
@@ -107,12 +109,14 @@ export function ClassForm({
       ? {
           name: initialData.name,
           fee: String(initialData.fee),
+          annual_dues: String(initialData.annual_dues ?? 0),
           class_teacher: initialData.class_teacher ?? "",
           capacity: String(initialData.capacity),
         }
       : {
           name: "",
           fee: "",
+          annual_dues: "0",
           class_teacher: "",
           capacity: "50",
         },
@@ -124,6 +128,7 @@ export function ClassForm({
       const payload = {
         name: v.name,
         fee: Number(v.fee) || 0,
+        annual_dues: Number(v.annual_dues) || 0,
         class_teacher: v.class_teacher || null,
         capacity: Number(v.capacity) || 50,
       };
@@ -161,8 +166,8 @@ export function ClassForm({
         )}
       </div>
 
-      {/* Fee + Capacity */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* Fee + Annual Dues + Capacity */}
+      <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-1.5">
           <Label htmlFor="class_fee">
             Monthly Fee <span className="text-destructive">*</span>
@@ -181,6 +186,24 @@ export function ClassForm({
           {errors.fee && (
             <p className="text-xs text-destructive">{errors.fee.message}</p>
           )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="class_annual_dues">Annual Dues</Label>
+          <div className="relative">
+            <Coins className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="class_annual_dues"
+              type="number"
+              step="0.01"
+              placeholder="0"
+              className="pl-9"
+              {...register("annual_dues")}
+            />
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Annual charges per student (e.g. fund).
+          </p>
         </div>
 
         <div className="space-y-1.5">

@@ -23,8 +23,8 @@ Built and working:
 - **ID Card generation** — Puppeteer-based, CR80 portrait (53.98mm × 85.6mm), premium design with navy/gold theme, logo watermark, gold-ring photo, STAFF ID badge in header, 6 cards per A4 page, theme customization (accent/gold/text/bg colors), iframe preview + download, All/Select mode with server-side search
 - **Student ID Cards** — Same Puppeteer PDF design as employee ID cards, STUDENT ID badge, student-specific fields (Reg No, Class, Father, Mobile, DOB, Blood Group), All mode with class multi-select / Select mode with server-side search (name & reg no only), theme customization, iframe preview + download
 - **Job Offer Letter** — `@react-pdf/renderer` based, premium template with navy/gold color scheme matching ID cards, school logo watermark (centered, fixed overlay), 2-page letter (particulars + terms), signature blocks, bottom accent strip
-- **Classes** — full CRUD (create, list, edit, delete), card grid view with boys/girls counts, enrollment progress bar, class name + fee + class teacher + capacity fields, empty state prompting to create first class
-- **Students** — full CRUD (create, list, edit, delete, view), card grid view with photo/class/fee, class dropdown with fee display, auto-generated registration no, photo upload, student attachments (birth cert, CNIC, results), search by name/reg no/father/mobile, filter by class, view details dialog with all fields, CSV bulk import, family grouping (auto-group by father CNIC), promote students (bulk class update), student ID cards
+- **Classes** — full CRUD (create, list, edit, delete), card grid view with boys/girls counts, enrollment progress bar, class name + fee + annual_dues + class teacher + capacity fields, empty state prompting to create first class
+- **Students** — full CRUD (create, list, edit, delete, view), card grid view with photo/class/fee, class dropdown with fee display, auto-generated registration no, photo upload, student attachments (birth cert, CNIC, results), search by name/reg no/father/mobile, filter by class, view details dialog with all fields, Excel bulk import (styled template with Instructions sheet), family grouping (auto-group by father CNIC), promote students (bulk class update), student ID cards
 
 Not yet built (Phase 2/3):
 - Teacher / Parent / Student portals (role cards exist in the login UI but show a "coming soon" toast)
@@ -207,7 +207,7 @@ app/
     │   ├── [schoolId]/[studentId]/attachments/route.ts  GET, POST attachments
     │   ├── [schoolId]/[studentId]/attachments/[attachmentId]/route.ts        DELETE attachment
     │   ├── [schoolId]/[studentId]/attachments/[attachmentId]/download/route.ts  GET download
-    │   ├── [schoolId]/import/route.ts                   POST — CSV bulk import
+    │   ├── [schoolId]/import/route.ts                   POST — Excel bulk import (.xlsx)
     │   ├── [schoolId]/families/route.ts                 GET — family grouping by father_nic
     │   ├── [schoolId]/promote/route.ts                  POST — bulk promote students to target class
     │   └── id-cards/pdf/route.ts                        GET — Puppeteer Student ID Card PDF generation
@@ -232,7 +232,7 @@ features/
 ├── employees/
 │   ├── employee-form.tsx          Add/edit employee form (RHF + Zod)
 │   ├── employee-management.tsx    Main page — tabs: All, Basic List, Manage Login, Job Offer, Attachments, ID Cards
-│   ├── employee-directory-tab.tsx Basic List tab — paginated table with CSV export
+│   ├── employee-directory-tab.tsx Basic List tab — paginated table with Excel export
 │   ├── employee-view-dialog.tsx  View employee details dialog
 │   ├── attachments-tab.tsx       Attachments tab — left panel list, right panel upload/download/delete
 │   ├── employee-attachments-form.tsx  Attachment form
@@ -246,14 +246,14 @@ features/
 │   └── job-offer-tab.tsx         Tab component to launch offer letter viewer
 │
 ├── classes/
-│   ├── class-form.tsx             Add/edit class form (RHF + Zod — name, fee, teacher, capacity)
+│   ├── class-form.tsx             Add/edit class form (RHF + Zod — name, fee, annual_dues, teacher, capacity)
 │   └── class-management.tsx       Card grid with boys/girls counts, progress bar, edit/delete
 │
 ├── students/
 │   ├── student-form.tsx           Add/edit student form (RHF + Zod — all student fields, class dropdown)
 │   ├── student-management.tsx     Main page — tabs: All, Basic List, Admission Letter, Attachments, Family, Promote, ID Cards
-│   ├── student-directory-tab.tsx  Basic List tab — paginated table with CSV export
-│   ├── import-students-dialog.tsx CSV bulk import dialog — class select, file upload, sample CSV
+│   ├── student-directory-tab.tsx  Basic List tab — paginated table with Excel export
+│   ├── import-students-dialog.tsx Excel bulk import dialog — class select, file upload, styled sample Excel template (2 sheets: Students + Instructions)
 │   ├── admission-letter-tab.tsx   Admission letter generation tab (SearchPicker → navigate to PDF viewer)
 │   ├── admission-letter-pdf.tsx   @react-pdf/renderer Admission Letter document
 │   ├── admission-letter-pdf-viewer.tsx  Client-side PDFViewer wrapper
@@ -294,6 +294,7 @@ supabase/
     ├── 0006_classes.sql              classes table (name, fee, teacher, capacity)
     ├── 0007_students.sql             students + student_attachments tables + storage buckets
     ├── 0008_student_free_balance.sql  is_free + previous_balance columns on students
+    ├── 0009_annual_dues.sql            annual_dues on classes + annual_dues_discount + previous_annual_due on students
     └── ...
 ```
 
@@ -352,10 +353,10 @@ Only Admin has a backend. Employee/Student, Sign Up, and Forgot-password show in
 Attachments uploaded for employees (documents, certificates, etc.). Stored in Supabase Storage bucket `employee-attachments`.
 
 ### `classes`
-`id` (uuid pk), `school_id` (fk → schools, ON DELETE CASCADE), `name` (text), `fee` (numeric, default 0), `class_teacher` (text, nullable), `capacity` (int, default 50), `is_active` (bool, default true), `created_at`, `updated_at`. Unique constraint on `(school_id, name)`. Boys/girls counts derived from `students` table.
+`id` (uuid pk), `school_id` (fk → schools, ON DELETE CASCADE), `name` (text), `fee` (numeric, default 0), `annual_dues` (numeric, default 0), `class_teacher` (text, nullable), `capacity` (int, default 50), `is_active` (bool, default true), `created_at`, `updated_at`. Unique constraint on `(school_id, name)`. Boys/girls counts derived from `students` table.
 
 ### `students`
-`id` (uuid pk), `school_id` (fk → schools, ON DELETE CASCADE), `class_id` (fk → classes, ON DELETE SET NULL), `registration_no` (auto STU-0001), `name`, `photo_url`, `date_of_admission` (default CURRENT_DATE), `discount` (numeric, default 0), `mobile`, `date_of_birth`, `gender` (male/female/other), `identification_mark`, `blood_group`, `disease`, `birth_form_id`, `additional_note`, `is_orphan` (bool), `is_osc` (bool), `is_free` (bool, default false), `previous_balance` (numeric, default 0), `religion`, `family`, `total_siblings` (int, default 0), `address`, `father_name`, `father_nic`, `father_profession`, `is_active` (bool, default true), `created_at`, `updated_at`.
+`id` (uuid pk), `school_id` (fk → schools, ON DELETE CASCADE), `class_id` (fk → classes, ON DELETE SET NULL), `registration_no` (auto STU-0001), `name`, `photo_url`, `date_of_admission` (default CURRENT_DATE), `discount` (numeric, default 0), `mobile`, `date_of_birth`, `gender` (male/female/other), `identification_mark`, `blood_group`, `disease`, `birth_form_id`, `additional_note`, `is_orphan` (bool), `is_osc` (bool), `is_free` (bool, default false), `previous_balance` (numeric, default 0), `annual_dues_discount` (numeric, default 0), `previous_annual_due` (numeric, default 0), `religion`, `family`, `total_siblings` (int, default 0), `address`, `father_name`, `father_nic`, `father_profession`, `is_active` (bool, default true), `created_at`, `updated_at`.
 
 ### `student_attachments`
 Documents uploaded for students (birth certificate, CNIC/B-Form, previous result, medical, etc.). Stored in Supabase Storage bucket `student-attachments`.
@@ -493,11 +494,11 @@ See `docs/architecture.md` §Search Pattern Consistency and §Page Container & L
 - Filter by class (dropdown), filter by free education status
 - View details dialog showing all student fields in a grid
 - Soft delete (sets `is_active = false`)
-- Form fields: name, photo, class, date of admission, discount, mobile, DOB, gender, blood group, identification mark, disease, birth form ID, additional note, orphan, OSC, is_free, previous_balance, religion, family, total siblings, address, father name, father NIC, father profession
+- Form fields: name, photo, class, date of admission, discount, mobile, DOB, gender, blood group, identification mark, disease, birth form ID, additional note, orphan, OSC, is_free, previous_balance, annual_dues_discount, previous_annual_due, religion, family, total siblings, address, father name, father NIC, father profession
 
 ### Student Tabs (sidebar sub-items, URL `?tab=`)
 - **All Students** (`all`) — card grid with search, class filter, free education filter, pagination
-- **Basic List** (`list`) — `StudentDirectoryTab` — paginated table with CSV export
+- **Basic List** (`list`) — `StudentDirectoryTab` — paginated table with Excel export
 - **Admission Letter** (`admission`) — `AdmissionLetterTab` — search student via `SearchPicker` → navigate to full-screen `@react-pdf/renderer` PDF viewer
 - **Attachments** (`attachments`) — left panel student list, right panel attachment upload/download/delete
 - **Family** (`family`) — `FamilyTab` — auto-groups students by `father_nic`, search, expandable family cards showing siblings
@@ -523,7 +524,7 @@ See `docs/architecture.md` §Search Pattern Consistency and §Page Container & L
 - `POST /api/students/[schoolId]/[studentId]/attachments` — upload attachment
 - `GET /api/students/[schoolId]/[studentId]/attachments/[attachmentId]` — download attachment
 - `DELETE /api/students/[schoolId]/[studentId]/attachments/[attachmentId]` — delete attachment
-- `POST /api/students/[schoolId]/import` — CSV bulk import
+- `POST /api/students/[schoolId]/import` — Excel bulk import (.xlsx parsed via xlsx library)
 - `GET /api/students/[schoolId]/families` — family grouping by father_nic
 - `POST /api/students/[schoolId]/promote` — bulk promote students to target class
 - `GET /api/students/id-cards/pdf` — Puppeteer Student ID Card PDF (supports ids, classIds, theme params)
@@ -538,7 +539,7 @@ See `docs/architecture.md` §Search Pattern Consistency and §Page Container & L
 
 | Component | Purpose |
 | --- | --- |
-| `directory-table.tsx` | Reusable paginated table — columns, search, filters, CSV export, active/inactive tabs |
+| `directory-table.tsx` | Reusable paginated table — columns, search, filters, Excel export (styled with colors, borders, alternating rows), active/inactive tabs |
 | `search-picker.tsx` | Reusable single-select search — debounced input, dropdown results, pick one |
 | `letter-search-tab.tsx` | Wrapper combining SearchPicker + "Print" button for letter generation tabs |
 | `pagination.tsx` | Page/pageSize controls for server-side paginated lists |

@@ -7,6 +7,7 @@ import { success, error } from "@/lib/api-response";
 const NewClassSchema = z.object({
   name: z.string().min(1, "Class name is required"),
   fee: z.number().min(0, "Fee must be 0 or greater"),
+  annual_dues: z.number().min(0).optional(),
   class_teacher: z.string().nullable().optional(),
   capacity: z.number().int().min(1).optional(),
 });
@@ -59,6 +60,7 @@ export async function POST(
     const data = await createClass(schoolId, {
       name: parsed.data.name,
       fee: parsed.data.fee,
+      annual_dues: parsed.data.annual_dues ?? 0,
       class_teacher: parsed.data.class_teacher ?? null,
       capacity: parsed.data.capacity ?? 50,
     });

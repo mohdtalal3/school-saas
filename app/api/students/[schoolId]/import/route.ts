@@ -3,46 +3,32 @@ import { getSchoolSession } from "@/lib/auth/jwt";
 import { success, error } from "@/lib/api-response";
 import { createSupabaseService } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import * as XLSX from "xlsx";
 
 interface CsvRow {
   [key: string]: string;
 }
 
-function parseCsv(text: string): { headers: string[]; rows: CsvRow[] } {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) return { headers: [], rows: [] };
+function parseExcel(buffer: ArrayBuffer): { headers: string[]; rows: CsvRow[] } {
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const sheetName = workbook.SheetNames[0];
+  if (!sheetName) return { headers: [], rows: [] };
+  const ws = workbook.Sheets[sheetName];
+  const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
+    defval: "",
+    raw: false,
+  });
+  if (json.length === 0) return { headers: [], rows: [] };
 
-  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
-  const rows: CsvRow[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    // Simple CSV parser that handles quoted values
-    const values: string[] = [];
-    let current = "";
-    let inQuotes = false;
-
-    for (let j = 0; j < line.length; j++) {
-      const char = line[j];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === "," && !inQuotes) {
-        values.push(current.trim());
-        current = "";
-      } else {
-        current += char;
-      }
+  const headers = Object.keys(json[0]).map((h) => h.toLowerCase().trim());
+  const rows: CsvRow[] = json.map((row) => {
+    const normalized: CsvRow = {};
+    for (const [key, val] of Object.entries(row)) {
+      normalized[key.toLowerCase().trim()] =
+        val === null || val === undefined ? "" : String(val).trim();
     }
-    values.push(current.trim());
-
-    const row: CsvRow = {};
-    headers.forEach((header, idx) => {
-      row[header] = values[idx] ?? "";
-    });
-    rows.push(row);
-  }
+    return normalized;
+  });
 
   return { headers, rows };
 }
@@ -138,11 +124,11 @@ export async function POST(
       return NextResponse.json(error("Class selection is required"), { status: 400 });
     }
 
-    const text = await file.text();
-    const { rows } = parseCsv(text);
+    const buffer = await file.arrayBuffer();
+    const { rows } = parseExcel(buffer);
 
     if (rows.length === 0) {
-      return NextResponse.json(error("CSV file is empty or has no data rows"), { status: 400 });
+      return NextResponse.json(error("Excel file is empty or has no data rows"), { status: 400 });
     }
 
     const supabase: SupabaseClient = createSupabaseService();
@@ -192,6 +178,8 @@ export async function POST(
         is_osc: parseBool(getVal(row, "is_osc", "osc")),
         is_free: parseBool(getVal(row, "is_free", "free")),
         previous_balance: parseNumber(getVal(row, "previous_balance", "prev_balance")),
+        annual_dues_discount: parseNumber(getVal(row, "annual_dues_discount")),
+        previous_annual_due: parseNumber(getVal(row, "previous_annual_due")),
         religion: getVal(row, "religion") ?? "Islam",
         family: getVal(row, "family") ?? null,
         total_siblings: parseInt(getVal(row, "total_siblings", "siblings")),

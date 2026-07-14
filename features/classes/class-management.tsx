@@ -53,7 +53,7 @@ async function fetchClasses(
 
 async function createClassApi(
   schoolId: string,
-  payload: { name: string; fee: number; class_teacher: string | null; capacity: number }
+  payload: { name: string; fee: number; annual_dues: number; class_teacher: string | null; capacity: number }
 ): Promise<SchoolClass> {
   const res = await fetch(`/api/classes/${schoolId}`, {
     method: "POST",

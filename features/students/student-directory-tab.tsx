@@ -94,6 +94,8 @@ const exportColumns: DirectoryColumn<StudentWithClass>[] = [
   { key: "is_osc", label: "OSC", exportValue: (s) => (s.is_osc ? "Yes" : "No") },
   { key: "is_free", label: "Free Education", exportValue: (s) => (s.is_free ? "Yes" : "No") },
   { key: "previous_balance", label: "Previous Balance", exportValue: (s) => String(s.previous_balance ?? 0) },
+  { key: "annual_dues_discount", label: "Annual Dues Discount", exportValue: (s) => String(s.annual_dues_discount ?? 0) },
+  { key: "previous_annual_due", label: "Previous Annual Due", exportValue: (s) => String(s.previous_annual_due ?? 0) },
   { key: "is_active", label: "Status", exportValue: (s) => (s.is_active ? "Active" : "Inactive") },
 ];
 

@@ -2,7 +2,7 @@
 import subprocess
 import sys
 
-COMMIT_MESSAGE = "add student id card module"
+COMMIT_MESSAGE = "add annual due and excel support"
 
 def run(cmd):
     print(f"▶ {cmd}")

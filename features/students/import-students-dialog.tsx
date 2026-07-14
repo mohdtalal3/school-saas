@@ -36,6 +36,34 @@ interface ImportDialogProps {
   schoolId: string;
 }
 
+const COLUMN_GUIDE: { header: string; desc: string }[] = [
+  { header: "name", desc: "required" },
+  { header: "registration_no", desc: "number, STU- auto-added" },
+  { header: "date_of_admission", desc: "YYYY-MM-DD" },
+  { header: "date_of_birth", desc: "YYYY-MM-DD" },
+  { header: "gender", desc: "0=male, 1=female" },
+  { header: "mobile", desc: "phone number without +92" },
+  { header: "discount", desc: "number" },
+  { header: "previous_balance", desc: "number" },
+  { header: "annual_dues_discount", desc: "number" },
+  { header: "previous_annual_due", desc: "number" },
+  { header: "is_free", desc: "0=no, 1=yes" },
+  { header: "is_orphan", desc: "0=no, 1=yes" },
+  { header: "is_osc", desc: "0=no, 1=yes" },
+  { header: "religion", desc: "defaults to Islam" },
+  { header: "blood_group", desc: "e.g. O+, A-, B+" },
+  { header: "identification_mark", desc: "text" },
+  { header: "disease", desc: "text" },
+  { header: "birth_form_id", desc: "text" },
+  { header: "family", desc: "text" },
+  { header: "total_siblings", desc: "integer" },
+  { header: "address", desc: "text" },
+  { header: "father_name", desc: "text" },
+  { header: "father_nic", desc: "text" },
+  { header: "father_profession", desc: "text" },
+  { header: "additional_note", desc: "text" },
+];
+
 const SAMPLE_CSV_HEADERS = [
   "name",
   "registration_no",
@@ -45,6 +73,8 @@ const SAMPLE_CSV_HEADERS = [
   "mobile",
   "discount",
   "previous_balance",
+  "annual_dues_discount",
+  "previous_annual_due",
   "is_free",
   "is_orphan",
   "is_osc",
@@ -74,6 +104,8 @@ const SAMPLE_ROW = [
   "0",
   "0",
   "0",
+  "0",
+  "0",
   "Islam",
   "O+",
   "Scar on left arm",
@@ -88,21 +120,102 @@ const SAMPLE_ROW = [
   "",
 ];
 
-function downloadSampleCsv() {
-  const headerLine = SAMPLE_CSV_HEADERS.join(",");
-  const sampleLine = SAMPLE_ROW.map((v) =>
-    v.includes(",") ? `"${v}"` : v
-  ).join(",");
-  const csv = `${headerLine}\n${sampleLine}\n`;
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "students-sample.csv";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+function downloadSampleExcel() {
+  const XLSX = require("xlsx-js-style");
+
+  // --- Sheet 1: Students (template) ---
+  const headerRow = SAMPLE_CSV_HEADERS;
+  const dataRow = SAMPLE_ROW;
+  const aoa = [headerRow, dataRow];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // Style header cells
+  for (let c = 0; c < headerRow.length; c++) {
+    const cellRef = XLSX.utils.encode_cell({ r: 0, c });
+    if (ws[cellRef]) {
+      ws[cellRef].s = {
+        fill: { fgColor: { rgb: "4F46E5" } },
+        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 12 },
+        alignment: { horizontal: "center", vertical: "center", wrapText: true },
+        border: {
+          top: { style: "thin", color: { rgb: "4F46E5" } },
+          bottom: { style: "thin", color: { rgb: "4F46E5" } },
+          left: { style: "thin", color: { rgb: "4F46E5" } },
+          right: { style: "thin", color: { rgb: "4F46E5" } },
+        },
+      };
+    }
+  }
+
+  // Style sample data row
+  for (let c = 0; c < dataRow.length; c++) {
+    const cellRef = XLSX.utils.encode_cell({ r: 1, c });
+    if (ws[cellRef]) {
+      ws[cellRef].s = {
+        fill: { fgColor: { rgb: "EEF2FF" } },
+        font: { color: { rgb: "374151" }, sz: 11 },
+        alignment: { vertical: "center", wrapText: true },
+        border: {
+          top: { style: "thin", color: { rgb: "E5E7EB" } },
+          bottom: { style: "thin", color: { rgb: "E5E7EB" } },
+          left: { style: "thin", color: { rgb: "E5E7EB" } },
+          right: { style: "thin", color: { rgb: "E5E7EB" } },
+        },
+      };
+    }
+  }
+
+  // Set column widths (wide for easy editing)
+  ws["!cols"] = SAMPLE_CSV_HEADERS.map((h) => ({ wch: Math.max(h.length + 6, 18) }));
+  // Set row heights (tall header, normal data)
+  ws["!rows"] = [{ hpt: 36 }, { hpt: 28 }];
+
+  // --- Sheet 2: Instructions ---
+  const guideAoa: (string | number)[][] = [["Column", "Description"]];
+  for (const g of COLUMN_GUIDE) {
+    guideAoa.push([g.header, g.desc]);
+  }
+  const wsGuide = XLSX.utils.aoa_to_sheet(guideAoa);
+
+  // Style guide header
+  wsGuide["A1"].s = {
+    fill: { fgColor: { rgb: "4F46E5" } },
+    font: { bold: true, color: { rgb: "FFFFFF" }, sz: 12 },
+    alignment: { horizontal: "center", vertical: "center" },
+  };
+  wsGuide["B1"].s = {
+    fill: { fgColor: { rgb: "4F46E5" } },
+    font: { bold: true, color: { rgb: "FFFFFF" }, sz: 12 },
+    alignment: { horizontal: "center", vertical: "center" },
+  };
+
+  // Style guide data rows
+  for (let r = 1; r < guideAoa.length; r++) {
+    const cellRefA = XLSX.utils.encode_cell({ r, c: 0 });
+    const cellRefB = XLSX.utils.encode_cell({ r, c: 1 });
+    if (wsGuide[cellRefA]) {
+      wsGuide[cellRefA].s = {
+        font: { bold: true, color: { rgb: "111827" }, sz: 11 },
+        fill: { fgColor: { rgb: r % 2 === 0 ? "F3F4F6" : "FFFFFF" } },
+        alignment: { vertical: "center" },
+      };
+    }
+    if (wsGuide[cellRefB]) {
+      wsGuide[cellRefB].s = {
+        font: { color: { rgb: "6B7280" }, sz: 11 },
+        fill: { fgColor: { rgb: r % 2 === 0 ? "F3F4F6" : "FFFFFF" } },
+        alignment: { vertical: "center", wrapText: true },
+      };
+    }
+  }
+
+  wsGuide["!cols"] = [{ wch: 24 }, { wch: 40 }];
+  wsGuide["!rows"] = [{ hpt: 30 }, ...Array(guideAoa.length - 1).fill({ hpt: 24 })];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Students");
+  XLSX.utils.book_append_sheet(wb, wsGuide, "Instructions");
+  XLSX.writeFile(wb, "students-sample.xlsx");
 }
 
 export function ImportStudentsDialog({ open, onClose, schoolId }: ImportDialogProps) {
@@ -172,10 +285,10 @@ export function ImportStudentsDialog({ open, onClose, schoolId }: ImportDialogPr
   }
 
   function handleFileSelect(file: File | null) {
-    if (file && !file.name.endsWith(".csv")) {
+    if (file && !/\.(xlsx|xls)$/i.test(file.name)) {
       toast({
         title: "Invalid file",
-        description: "Please select a CSV file",
+        description: "Please select an Excel file (.xlsx or .xls)",
         variant: "destructive",
       });
       return;
@@ -193,7 +306,7 @@ export function ImportStudentsDialog({ open, onClose, schoolId }: ImportDialogPr
             Import Students
           </DialogTitle>
           <DialogDescription>
-            Upload a CSV file to bulk-import students into a class.
+            Upload an Excel file to bulk-import students into a class.
           </DialogDescription>
         </DialogHeader>
 
@@ -250,11 +363,11 @@ export function ImportStudentsDialog({ open, onClose, schoolId }: ImportDialogPr
 
               {/* Download sample */}
               <button
-                onClick={downloadSampleCsv}
+                onClick={downloadSampleExcel}
                 className="flex items-center gap-2 text-sm text-primary hover:underline"
               >
                 <Download className="h-4 w-4" />
-                Download sample CSV template
+                Download sample Excel template
               </button>
 
               {/* File upload dropzone */}
@@ -298,12 +411,12 @@ export function ImportStudentsDialog({ open, onClose, schoolId }: ImportDialogPr
                   <>
                     <Upload className="mb-2 h-8 w-8 text-muted-foreground/50" />
                     <p className="text-sm text-muted-foreground">
-                      Drag &amp; drop CSV here, or{" "}
+                      Drag &amp; drop Excel here, or{" "}
                       <label className="text-primary cursor-pointer hover:underline">
                         browse
                         <input
                           type="file"
-                          accept=".csv"
+                          accept=".xlsx,.xls"
                           className="hidden"
                           onChange={(e) => {
                             const file = e.target.files?.[0] ?? null;
@@ -316,9 +429,9 @@ export function ImportStudentsDialog({ open, onClose, schoolId }: ImportDialogPr
                 )}
               </div>
 
-              {/* CSV column guide */}
+              {/* Excel column guide */}
               <div className="rounded-md border bg-muted/30 p-3">
-                <p className="text-xs font-semibold mb-1.5">CSV Column Guide:</p>
+                <p className="text-xs font-semibold mb-1.5">Excel Column Guide (see Instructions sheet in template):</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[11px] text-muted-foreground">
                   <div><span className="font-medium text-foreground">name</span> — required</div>
                   <div><span className="font-medium text-foreground">date_of_admission</span> — YYYY-MM-DD</div>
@@ -328,6 +441,8 @@ export function ImportStudentsDialog({ open, onClose, schoolId }: ImportDialogPr
                   <div><span className="font-medium text-foreground">is_orphan</span> — 0=no, 1=yes</div>
                   <div><span className="font-medium text-foreground">is_osc</span> — 0=no, 1=yes</div>
                   <div><span className="font-medium text-foreground">previous_balance</span> — number</div>
+                  <div><span className="font-medium text-foreground">annual_dues_discount</span> — number</div>
+                  <div><span className="font-medium text-foreground">previous_annual_due</span> — number</div>
                   <div><span className="font-medium text-foreground">discount</span> — number</div>
                   <div><span className="font-medium text-foreground">religion</span> — defaults to Islam</div>
                   <div><span className="font-medium text-foreground">total_siblings</span> — integer</div>

@@ -11,6 +11,7 @@ import { success, error } from "@/lib/api-response";
 const UpdateSchema = z.object({
   name: z.string().min(1).optional(),
   fee: z.number().min(0).optional(),
+  annual_dues: z.number().min(0).optional(),
   class_teacher: z.string().nullable().optional(),
   capacity: z.number().int().min(1).optional(),
   is_active: z.boolean().optional(),

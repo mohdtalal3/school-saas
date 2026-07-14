@@ -373,6 +373,8 @@ function ViewDialog({
               <ViewField icon={Coins} label="Net Fee" value={`Rs. ${netFee.toLocaleString()}`} />
               <ViewField icon={Coins} label="Discount" value={student.discount > 0 ? `Rs. ${student.discount.toLocaleString()}` : null} />
               <ViewField icon={Coins} label="Previous Balance" value={student.previous_balance > 0 ? `Rs. ${student.previous_balance.toLocaleString()}` : null} />
+              <ViewField icon={Coins} label="Annual Dues Discount" value={student.annual_dues_discount > 0 ? `Rs. ${student.annual_dues_discount.toLocaleString()}` : null} />
+              <ViewField icon={Coins} label="Previous Annual Due" value={student.previous_annual_due > 0 ? `Rs. ${student.previous_annual_due.toLocaleString()}` : null} />
               <ViewField icon={Phone} label="Mobile" value={student.mobile} />
             </div>
           </div>
