@@ -2,7 +2,7 @@
 import subprocess
 import sys
 
-COMMIT_MESSAGE = "add annual due and excel support"
+COMMIT_MESSAGE = "add manuual overwrite over fee invoice"
 
 def run(cmd):
     print(f"▶ {cmd}")

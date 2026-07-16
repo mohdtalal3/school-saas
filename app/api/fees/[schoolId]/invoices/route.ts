@@ -11,6 +11,13 @@ const GenerateSchema = z.object({
   fee_month: z.string().min(1, "Fee month is required"),
   due_date: z.string().min(1, "Due date is required"),
   fine_after_due: z.number().min(0).optional().default(0),
+  custom_particulars: z.array(z.object({
+    label: z.string(),
+    amount: z.number(),
+    is_fixed: z.boolean(),
+    source_type: z.string().nullable().optional(),
+    add_to_balance: z.boolean().optional(),
+  })).optional(),
 });
 
 export async function GET(
@@ -69,6 +76,7 @@ export async function POST(
       fee_month: parsed.data.fee_month,
       due_date: parsed.data.due_date,
       fine_after_due: parsed.data.fine_after_due ?? 0,
+      custom_particulars: parsed.data.custom_particulars as { label: string; amount: number; is_fixed: boolean; source_type: string | null; add_to_balance?: boolean }[] | undefined,
     });
     return NextResponse.json(success(data));
   } catch (e) {

@@ -82,9 +82,9 @@ function formatPhone(val: string | undefined): string | null {
   return v;
 }
 
-function formatRegNo(val: string | undefined, counter: number): string {
+function formatRegNo(val: string | undefined, year: number, count: number): string {
   if (!val || !val.trim()) {
-    return `STU-${String(counter + 1).padStart(4, "0")}`;
+    return `STU-${year}-${String(count + 1).padStart(4, "0")}`;
   }
   const raw = val.trim().toUpperCase();
   return raw.startsWith("STU-") ? raw : `STU-${raw}`;
@@ -133,13 +133,6 @@ export async function POST(
 
     const supabase: SupabaseClient = createSupabaseService();
 
-    // Get current student count for registration number generation
-    const { count: existingCount } = await supabase
-      .from("students")
-      .select("*", { count: "exact", head: true })
-      .eq("school_id", schoolId);
-
-    let regCounter = existingCount ?? 0;
     const inserted: { name: string; registration_no: string }[] = [];
     const errors: { row: number; error: string }[] = [];
 
@@ -153,9 +146,19 @@ export async function POST(
         continue;
       }
 
-      const registrationNo = formatRegNo(getVal(row, "registration_no", "reg_no"), regCounter);
+      // Extract year from date_of_admission or default to current year
+      const admitDate = parseDate(getVal(row, "date_of_admission", "admission_date"));
+      const admitYear = admitDate ? new Date(admitDate).getFullYear() : new Date().getFullYear();
+      const yy = String(admitYear);
 
-      regCounter++;
+      // Count existing students with same year prefix for unique numbering
+      const { count: yearCount } = await supabase
+        .from("students")
+        .select("*", { count: "exact", head: true })
+        .eq("school_id", schoolId)
+        .like("registration_no", `STU-${yy}-%`);
+
+      const registrationNo = formatRegNo(getVal(row, "registration_no", "reg_no"), admitYear, (yearCount ?? 0) + i);
 
       const insertData: Record<string, unknown> = {
         school_id: schoolId,
@@ -201,7 +204,6 @@ export async function POST(
           row: rowNum,
           error: insertError.message,
         });
-        regCounter--; // Revert counter on failure
       } else {
         inserted.push({
           name: (data as Record<string, unknown>).name as string,

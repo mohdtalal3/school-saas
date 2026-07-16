@@ -7,8 +7,8 @@ import type { PaginatedResult, PaginationParams } from "@/services/student.servi
 
 const SALT_ROUNDS = 10;
 
-function generateEmployeeCode(count: number): string {
-  return `EMP-${String(count + 1).padStart(4, "0")}`;
+function generateEmployeeCode(year: number, count: number): string {
+  return `EMP-${year}-${String(count + 1).padStart(4, "0")}`;
 }
 
 function cnicToUsername(cnic: string): string {
@@ -100,12 +100,17 @@ export async function createEmployee(
 ): Promise<{ employee: Employee; username: string; password: string }> {
   const supabase: SupabaseClient = createSupabaseService();
 
-  // Generate next employee code
-  const { count } = await supabase
+  // Generate next employee code: EMP-YY-NNNN (year from date_of_joining)
+  const joinYear = input.date_of_joining
+    ? new Date(input.date_of_joining).getFullYear()
+    : new Date().getFullYear();
+  const yy = String(joinYear);
+  const { count: yearCount } = await supabase
     .from("employees")
     .select("*", { count: "exact", head: true })
-    .eq("school_id", schoolId);
-  const employee_code = generateEmployeeCode(count ?? 0);
+    .eq("school_id", schoolId)
+    .like("employee_code", `EMP-${yy}-%`);
+  const employee_code = generateEmployeeCode(joinYear, yearCount ?? 0);
 
   // Username = CNIC without dashes
   const rawCnic = input.cnic.replace(/\D/g, "");

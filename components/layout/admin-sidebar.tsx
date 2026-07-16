@@ -26,7 +26,9 @@ import {
   UsersRound,
   ArrowUpCircle,
   Wallet,
+  HandCoins,
   Receipt,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -67,6 +69,8 @@ const studentSubItems: SidebarSubItem[] = [
 const feeSubItems: SidebarSubItem[] = [
   { label: "Fee Particulars", icon: Receipt, tab: "particulars" },
   { label: "Invoice Generator", icon: FileText, tab: "invoices" },
+  { label: "Search Invoices", icon: Search, tab: "search" },
+  { label: "Collect Fees", icon: HandCoins, tab: "collect" },
 ];
 
 const employeeSubItems: SidebarSubItem[] = [

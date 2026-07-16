@@ -145,7 +145,7 @@ CREATE TABLE students (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_id       UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
   class_id        UUID REFERENCES classes(id) ON DELETE SET NULL,
-  registration_no TEXT,          -- auto-generated STU-0001
+  registration_no TEXT,          -- auto-generated STU-YYYY-NNNN (year from date_of_admission)
   name            TEXT NOT NULL,
   photo_url       TEXT,
   date_of_admission DATE NOT NULL DEFAULT CURRENT_DATE,
@@ -164,6 +164,7 @@ CREATE TABLE students (
   previous_balance NUMERIC(12,2) NOT NULL DEFAULT 0,
   annual_dues_discount NUMERIC(12,2) NOT NULL DEFAULT 0,
   previous_annual_due NUMERIC(12,2) NOT NULL DEFAULT 0,
+  annual_dues_original NUMERIC(12,2) NOT NULL DEFAULT 0,
   religion        TEXT,
   family          TEXT,
   total_siblings  INTEGER NOT NULL DEFAULT 0,
@@ -213,14 +214,15 @@ CREATE TABLE fee_particulars (
 );
 ```
 
-- **Fixed particulars** (`is_fixed = true`): amount is auto-resolved from class/student data at fee calculation time. `source_type` identifies the source field (e.g. `class.fee`, `student.previous_balance`, `student.discount`, `student.annual_dues_discount`, `class.annual_dues`).
+- **Fixed particulars** (`is_fixed = true`): amount is auto-resolved from class/student data at fee calculation time. `source_type` identifies the source field (e.g. `class.fee`, `student.previous_balance`, `student.discount`, `student.previous_annual_due`, `student.annual_dues_discount`).
 - **Custom particulars** (`is_fixed = false`): user sets a fixed `amount`. Users can add/edit/delete these.
 - **Default seed** (8 items): MONTHLY TUITION FEE (fixed), ADMISSION FEE (custom), REGISTRATION FEE (custom), FINE (custom), PREVIOUS BALANCE (fixed), DISCOUNT IN FEE (fixed), ANNUAL DUES DISCOUNT (fixed), ANNUAL DUE (fixed).
+- **Discount handling at invoice generation**: Discount particulars (DISCOUNT IN FEE, ANNUAL DUES DISCOUNT) are NOT included as separate line items in the invoice. Instead, discounts are applied directly to the corresponding charge amounts: DISCOUNT IN FEE reduces the tuition (class.fee) amount, ANNUAL DUES DISCOUNT is already baked into `student.previous_annual_due` at creation/promotion time (class.annual_dues - annual_dues_discount), so it is skipped to avoid double-discounting. The invoice particulars only contain net (discounted) charge amounts.
 - Unique constraint on `(school_id, lower(label))`.
 
 ### `fee_invoices`
 
-Generated fee invoices per student. Each invoice has a unique `invoice_no` (INV-00001 format, sequential per school).
+Generated fee invoices per student. Each invoice has a unique `invoice_no` (INV-MM_YYYY_NNNN format, sequential per school per month-year).
 
 ```sql
 CREATE TABLE fee_invoices (
@@ -237,19 +239,59 @@ CREATE TABLE fee_invoices (
   fine_after_due  NUMERIC(12,2) NOT NULL DEFAULT 0,
   particulars     JSONB NOT NULL DEFAULT '[]',
   total_amount    NUMERIC(12,2) NOT NULL DEFAULT 0,
+  paid_amount     NUMERIC(12,2) NOT NULL DEFAULT 0,
   status          TEXT NOT NULL DEFAULT 'unpaid',
+  payment_date    TIMESTAMPTZ,
+  payment_note    TEXT,
   father_name     TEXT,
+  father_nic      TEXT,
   mobile          TEXT,
   created_at      TIMESTAMPTZ DEFAULT now(),
   updated_at      TIMESTAMPTZ DEFAULT now()
 );
 ```
 
-- **invoice_no**: unique per school, auto-generated as `INV-00001` (sequential).
-- **particulars**: JSONB array of `{ label, amount, is_fixed, source_type }` — resolved at generation time from fee_particulars config.
-- **total_amount**: calculated from particulars (discounts subtracted).
+- **invoice_no**: unique per school, auto-generated as `INV-MM_YYYY_NNNN` (e.g. `INV-07_2026_0001`), sequential per month-year. Counter resets each month.
+- **particulars**: JSONB array of `{ label, amount, paid_amount, status, is_fixed, source_type }` — resolved at generation time from fee_particulars config. Discounts are baked into charge amounts (no separate discount line items). Fine particulars (label contains "FINE") are excluded from particulars and total; stored separately as `fine_after_due`. Each particular tracks `paid_amount` (cumulative per particular) and `status` (`unpaid` | `partial` | `paid` | `waived`).
+- **total_amount**: sum of all particular amounts (discounts already applied, so this is the net payable). Fine is NOT added to total — applied at payment time if late.
+- **fine_after_due**: auto-resolved from fee particulars with "FINE" in label. Shown in PDF footer as info only.
+- **father_nic**: denormalized from students table for fast search without JOIN.
 - **status**: `unpaid` | `partial` | `paid`.
+- **Duplicate prevention**: generation skips students who already have an invoice for the same `fee_month`.
+- **Custom particulars (student-wise Edit & Generate)**: when `custom_particulars` array is provided in the POST payload, the service uses those amounts directly instead of resolving from fee_particulars config. Each item has `{ label, amount, is_fixed, source_type, add_to_balance }`. FINE items are separated into `fine_after_due`. Items with `add_to_balance: true` and positive amount (excluding discounts/fine) are added to `student.previous_balance` after invoice generation — used for one-time fees like admission fee so they don't recur in future monthly invoices.
+- **paid_amount**: cumulative amount paid across all transactions. Updated each time a payment is recorded via Collect Fees.
+- **status**: `unpaid` (paid_amount = 0) | `partial` (0 < paid_amount < total_amount) | `paid` (paid_amount >= total_amount). Auto-updated on payment.
+- **payment_date**: timestamp of last payment. **payment_note**: optional note (cash, cheque, bank transfer etc.).
 - Unique constraint on `(school_id, invoice_no)`.
+
+### `fee_payments`
+
+Records each individual fee payment transaction. A single invoice can have multiple payments (partial payments).
+
+```sql
+CREATE TABLE fee_payments (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  school_id       UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  invoice_id      UUID NOT NULL REFERENCES fee_invoices(id) ON DELETE CASCADE,
+  student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  amount          NUMERIC(12,2) NOT NULL,
+  payment_date    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  note            TEXT,
+  particular_breakdown JSONB NOT NULL DEFAULT '[]',
+  created_at      TIMESTAMPTZ DEFAULT now()
+);
+```
+
+- **particular_breakdown**: JSONB array of `{ label, amount }` — how much was paid per particular line item in this transaction.
+- **Balance handling on payment (`collectFee`)**: 
+  - `student.previous_balance` is reduced by the amount paid toward the PREVIOUS BALANCE particular.
+  - Unpaid portions of non-annual, non-prev-balance particulars (e.g. tuition) are added to `student.previous_balance`.
+  - Net effect: `previous_balance = current - prevBalancePaid + unpaidNonCarried`.
+  - `student.previous_annual_due` is reduced by the amount allocated toward annual dues particulars.
+- **Balance reversal on payment deletion (`deletePayment`)**: 
+  - `student.previous_balance` is restored: re-adds the amount that was paid toward PREVIOUS BALANCE, subtracts the unpaid that was carried forward.
+  - `student.previous_annual_due` is increased back, capped at `annual_dues_original`.
+- **Annual dues tracking**: `student.previous_annual_due` is a running balance that decreases as payments are allocated to it. `student.annual_dues_original` stores the initial annual dues for the year (set at student creation and promotion), used as a cap when reversing payments.
 
 ---
 
@@ -330,6 +372,13 @@ supabase/
     ├── 0009_annual_dues.sql              ✅ Applied — annual_dues on classes + annual_dues_discount + previous_annual_due on students
     ├── 0010_fee_particulars.sql           ✅ Applied — fee_particulars table (label, amount, is_fixed, source_type, sort_order)
     ├── 0011_fee_invoices.sql              ✅ Applied — fee_invoices table (invoice_no, student, class, particulars JSONB, total, status)
+    ├── 0012_fee_invoices_father_nic.sql       ✅ Applied — father_nic column on fee_invoices + index
+    ├── 0013_update_annual_due_source_type.sql  ✅ Applied — change ANNUAL DUE source_type from class.annual_dues to student.previous_annual_due
+    ├── 0014_fee_payments.sql             ✅ Applied — fee_payments table + paid_amount/payment_date/payment_note on fee_invoices
+    ├── 0015_invoice_pdf_enhancements.sql    ✅ Applied — waived_amount column on fee_invoices
+    ├── 0016_collect_fee_allocations.sql     ✅ Applied — per-particular payment allocations (paid_amount, status on InvoiceParticular)
+    ├── 0017_per_particular_payments.sql     ✅ Applied — per-particular payment tracking in JSONB particulars
+    └── 0018_annual_dues_tracking.sql        ✅ Applied — annual_dues_original column on students (tracks initial annual dues for the year, caps reversal on payment deletion)
 ```
 
 Run: `npm run db:migrate`
@@ -358,6 +407,7 @@ CREATE INDEX idx_fee_invoices_class_id ON fee_invoices(class_id);
 CREATE INDEX idx_fee_invoices_invoice_no ON fee_invoices(invoice_no);
 CREATE INDEX idx_fee_invoices_fee_month ON fee_invoices(school_id, fee_month);
 CREATE INDEX idx_fee_invoices_status ON fee_invoices(school_id, status);
+CREATE INDEX idx_fee_invoices_father_nic ON fee_invoices(school_id, father_nic);
 ```
 
 ---

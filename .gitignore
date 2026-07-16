@@ -10,3 +10,4 @@ dist/
 .vercel
 .turbo
 next-env.d.ts
+seed_data.py

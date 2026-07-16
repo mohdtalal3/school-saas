@@ -32,7 +32,7 @@ const DEFAULT_PARTICULARS: DefaultParticular[] = [
   { label: "PREVIOUS BALANCE", amount: 0, is_fixed: true, source_type: "student.previous_balance", sort_order: 5 },
   { label: "DISCOUNT IN FEE", amount: 0, is_fixed: true, source_type: "student.discount", sort_order: 6 },
   { label: "ANNUAL DUES DISCOUNT", amount: 0, is_fixed: true, source_type: "student.annual_dues_discount", sort_order: 7 },
-  { label: "ANNUAL DUE", amount: 0, is_fixed: true, source_type: "class.annual_dues", sort_order: 8 },
+  { label: "PENDING ANNUAL DUES", amount: 0, is_fixed: true, source_type: "student.previous_annual_due", sort_order: 8 },
 ];
 
 // ── Seed defaults if none exist ────────────────────────────────────────────────

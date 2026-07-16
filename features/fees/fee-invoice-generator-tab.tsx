@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Loader2,
   FileText,
@@ -10,11 +10,11 @@ import {
   Users,
   User,
   Layers,
-  Calendar,
-  AlertTriangle,
-  Trash2,
   Eye,
   CheckCircle2,
+  Pencil,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dialog";
 import { SearchPicker } from "@/components/ui/search-picker";
 import { useToast } from "@/components/ui/toast";
-import type { FeeInvoice, SchoolClass } from "@/types/school.types";
+import type { FeeInvoice, FeeParticular, SchoolClass, CustomParticular } from "@/types/school.types";
 
 // ── API helpers ────────────────────────────────────────────────────────────────
 
@@ -77,28 +77,28 @@ async function generateInvoicesApi(
   return data.data;
 }
 
-async function fetchInvoices(
-  schoolId: string,
-  params: { page: number; limit: number; search?: string; feeMonth?: string }
-): Promise<{ data: FeeInvoice[]; total: number }> {
-  const qs = new URLSearchParams({
-    page: String(params.page),
-    limit: String(params.limit),
-  });
-  if (params.search) qs.set("search", params.search);
-  if (params.feeMonth) qs.set("feeMonth", params.feeMonth);
-  const res = await fetch(`/api/fees/${schoolId}/invoices?${qs}`);
+async function fetchFeeParticulars(schoolId: string): Promise<FeeParticular[]> {
+  const res = await fetch(`/api/fees/${schoolId}/particulars`);
   const json = await res.json();
-  if (!res.ok || !json.success) throw new Error(json.error || "Failed to load");
-  return json.data;
+  if (!res.ok || !json.success) throw new Error(json.error || "Failed to load particulars");
+  return json.data ?? [];
 }
 
-async function deleteInvoiceApi(schoolId: string, invoiceId: string): Promise<void> {
-  const res = await fetch(`/api/fees/${schoolId}/invoices/${invoiceId}`, {
-    method: "DELETE",
-  });
-  const data = await res.json();
-  if (!res.ok || !data.success) throw new Error(data.error || "Failed to delete");
+async function fetchStudentForParticulars(
+  schoolId: string,
+  studentId: string
+): Promise<{ previous_balance: number; previous_annual_due: number; discount: number; class_fee: number }> {
+  const res = await fetch(`/api/students/${schoolId}/${studentId}`);
+  const json = await res.json();
+  if (!res.ok || !json.success) throw new Error(json.error || "Failed to load student");
+  const s = json.data;
+  if (!s) throw new Error("Student not found");
+  return {
+    previous_balance: s.previous_balance ?? 0,
+    previous_annual_due: s.previous_annual_due ?? 0,
+    discount: s.discount ?? 0,
+    class_fee: s.class_fee ?? 0,
+  };
 }
 
 // ── Month helpers ──────────────────────────────────────────────────────────────
@@ -150,51 +150,34 @@ export function FeeInvoiceGeneratorTab({ schoolId }: FeeInvoiceGeneratorTabProps
 
   const [mode, setMode] = React.useState<GenMode>("class");
   const [classId, setClassId] = React.useState("");
-  const [feeMonth, setFeeMonth] = React.useState("");
+  const [feeMonth, setFeeMonth] = React.useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
   const [dueDate, setDueDate] = React.useState(addDays(todayISO(), 10));
   const [pickedStudents, setPickedStudents] = React.useState<PickedStudent[]>([]);
 
   const [generatedInvoices, setGeneratedInvoices] = React.useState<FeeInvoice[] | null>(null);
   const [showGenerated, setShowGenerated] = React.useState(false);
-  const [deleteTarget, setDeleteTarget] = React.useState<FeeInvoice | null>(null);
-
-  // Search state for invoice lookup (separate from generation form)
-  const [invoiceSearch, setInvoiceSearch] = React.useState("");
-  const [debouncedSearch, setDebouncedSearch] = React.useState("");
-  const [invoiceMonth, setInvoiceMonth] = React.useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  });
-  const [page, setPage] = React.useState(1);
 
   const monthOptions = React.useMemo(() => getMonthOptions(), []);
-
-  // Debounce search (300ms)
-  React.useEffect(() => {
-    const t = setTimeout(() => {
-      setDebouncedSearch(invoiceSearch);
-      setPage(1);
-    }, 300);
-    return () => clearTimeout(t);
-  }, [invoiceSearch]);
-
-  const invoiceQueryKey = ["fee-invoices", schoolId, { page, limit: 25, debouncedSearch, invoiceMonth }];
 
   const { data: classes } = useQuery({
     queryKey: ["classes-for-invoices", schoolId],
     queryFn: () => fetchClasses(schoolId),
   });
 
-  const hasSearched = debouncedSearch.trim().length > 0;
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [editParticulars, setEditParticulars] = React.useState<CustomParticular[]>([]);
+  const [editLoading, setEditLoading] = React.useState(false);
 
-  const { data: invoicesData, isLoading: invoicesLoading } = useQuery({
-    queryKey: invoiceQueryKey,
-    queryFn: () => fetchInvoices(schoolId, { page, limit: 25, search: debouncedSearch || undefined, feeMonth: invoiceMonth || undefined }),
-    enabled: hasSearched,
+  const { data: feeParticulars } = useQuery({
+    queryKey: ["fee-particulars-for-gen", schoolId],
+    queryFn: () => fetchFeeParticulars(schoolId),
   });
 
   const generateMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: (customParticulars?: CustomParticular[]) => {
       const payload: Record<string, unknown> = {
         mode,
         fee_month: feeMonth,
@@ -202,12 +185,16 @@ export function FeeInvoiceGeneratorTab({ schoolId }: FeeInvoiceGeneratorTabProps
       };
       if (mode === "class") payload.class_id = classId;
       if (mode === "student") payload.student_ids = pickedStudents.map((s) => s.id);
+      if (customParticulars) payload.custom_particulars = customParticulars;
       return generateInvoicesApi(schoolId, payload);
     },
     onSuccess: (data) => {
+      if (data.length === 0) {
+        toast({ title: "All students already have invoices for this month", variant: "default" });
+        return;
+      }
       setGeneratedInvoices(data);
       setShowGenerated(true);
-      qc.invalidateQueries({ queryKey: invoiceQueryKey });
       toast({ title: `${data.length} invoice(s) generated`, variant: "success" });
     },
     onError: (e) => {
@@ -219,27 +206,93 @@ export function FeeInvoiceGeneratorTab({ schoolId }: FeeInvoiceGeneratorTabProps
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: () => deleteInvoiceApi(schoolId, deleteTarget!.id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: invoiceQueryKey });
-      setDeleteTarget(null);
-      toast({ title: "Invoice deleted", variant: "success" });
-    },
-    onError: (e) => {
-      toast({
-        title: "Delete failed",
-        description: e instanceof Error ? e.message : "Try again",
-        variant: "destructive",
-      });
-    },
-  });
 
   function canGenerate(): boolean {
     if (!feeMonth || !dueDate) return false;
     if (mode === "class" && !classId) return false;
     if (mode === "student" && pickedStudents.length === 0) return false;
     return true;
+  }
+
+  function resolveParticularForEdit(
+    particulars: FeeParticular[],
+    student: { previous_balance: number; previous_annual_due: number; discount: number; class_fee: number }
+  ): CustomParticular[] {
+    return particulars.map((p) => {
+      let amount = p.amount;
+      if (p.is_fixed && p.source_type) {
+        switch (p.source_type) {
+          case "class.fee": amount = student.class_fee; break;
+          case "student.previous_annual_due": amount = student.previous_annual_due; break;
+          case "student.previous_balance": amount = student.previous_balance; break;
+          case "student.discount": amount = student.discount; break;
+          default: amount = 0;
+        }
+      }
+      return {
+        label: p.label,
+        amount,
+        is_fixed: p.is_fixed,
+        source_type: p.source_type,
+        add_to_balance: true,
+      };
+    });
+  }
+
+  async function openEditDialog() {
+    if (!feeParticulars || pickedStudents.length === 0) return;
+    setEditLoading(true);
+    setEditDialogOpen(true);
+    try {
+      const studentData = await fetchStudentForParticulars(schoolId, pickedStudents[0].id);
+      const resolved = resolveParticularForEdit(feeParticulars, studentData);
+      setEditParticulars(resolved);
+    } catch {
+      // Fallback: use raw particulars without resolution
+      const fallback = feeParticulars
+        .map((p) => ({
+          label: p.label,
+          amount: p.amount,
+          is_fixed: p.is_fixed,
+          source_type: p.source_type,
+          add_to_balance: true,
+        }));
+      setEditParticulars(fallback);
+    }
+    setEditLoading(false);
+  }
+
+  function updateParticularAmount(idx: number, amount: number) {
+    setEditParticulars(prev => prev.map((p, i) => i === idx ? { ...p, amount } : p));
+  }
+
+  function toggleAddToBalance(idx: number) {
+    setEditParticulars(prev => prev.map((p, i) => i === idx ? { ...p, add_to_balance: !p.add_to_balance } : p));
+  }
+
+  function removeParticular(idx: number) {
+    setEditParticulars(prev => prev.filter((_, i) => i !== idx));
+  }
+
+  function addParticular() {
+    setEditParticulars(prev => [...prev, {
+      label: "NEW FEE",
+      amount: 0,
+      is_fixed: false,
+      source_type: null,
+      add_to_balance: false,
+    }]);
+  }
+
+  function updateParticularLabel(idx: number, label: string) {
+    setEditParticulars(prev => prev.map((p, i) => i === idx ? { ...p, label } : p));
+  }
+
+  function calculateEditTotal(): number {
+    return editParticulars.reduce((sum, p) => {
+      const isDiscount = p.label.toUpperCase().includes("DISCOUNT");
+      return sum + (isDiscount ? -Math.abs(p.amount) : p.amount);
+    }, 0);
   }
 
   function downloadPdf(opts: { ids?: string[]; allClasses?: boolean; search?: string; feeMonth?: string }) {
@@ -309,33 +362,124 @@ export function FeeInvoiceGeneratorTab({ schoolId }: FeeInvoiceGeneratorTabProps
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirmation */}
-      <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
-        <DialogContent className="sm:max-w-sm">
+      {/* Edit particulars dialog (student-wise mode) */}
+      <Dialog open={editDialogOpen} onOpenChange={(o) => { if (!o) setEditDialogOpen(false); }}>
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
-                <AlertTriangle className="h-5 w-5 text-destructive" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                <Pencil className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <DialogTitle>Delete Invoice?</DialogTitle>
+                <DialogTitle>Edit Fee Particulars</DialogTitle>
                 <DialogDescription>
-                  {deleteTarget?.invoice_no} — {deleteTarget?.student_name} will be permanently deleted.
+                  Adjust amounts, add one-time fees, or mark items to add to student balance.
+                  Applies to {pickedStudents.length} student(s).
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button
-              variant="destructive"
-              onClick={() => deleteMutation.mutate()}
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Delete
-            </Button>
-          </DialogFooter>
+
+          {editLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              <div className="max-h-[50vh] overflow-y-auto space-y-2">
+                {/* Table header */}
+                <div className="grid grid-cols-[1fr_100px_80px_36px] gap-2 px-1 text-xs font-medium text-muted-foreground">
+                  <span>Label</span>
+                  <span className="text-right">Amount</span>
+                  <span className="text-center">To Balance</span>
+                  <span></span>
+                </div>
+
+                {editParticulars.map((p, idx) => {
+                  return (
+                    <div
+                      key={idx}
+                      className="grid grid-cols-[1fr_100px_80px_36px] gap-2 items-center rounded-lg border p-2"
+                    >
+                      <Input
+                        value={p.label}
+                        onChange={(e) => updateParticularLabel(idx, e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                      <Input
+                        type="number"
+                        value={p.amount}
+                        onChange={(e) => updateParticularAmount(idx, parseFloat(e.target.value) || 0)}
+                        className="h-8 text-sm text-right"
+                      />
+                      <div className="flex justify-center">
+                        <input
+                          type="checkbox"
+                          checked={p.add_to_balance ?? false}
+                          onChange={() => toggleAddToBalance(idx)}
+                          className="h-4 w-4 cursor-pointer rounded border-gray-300"
+                          title="Add this amount to student's previous balance after generation"
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive/70 hover:text-destructive"
+                        onClick={() => removeParticular(idx)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  );
+                })}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 mt-2"
+                  onClick={addParticular}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Particular
+                </Button>
+
+                {/* Total */}
+                <div className="flex items-center justify-between border-t pt-3 mt-3">
+                  <span className="text-sm font-medium">Total Payable</span>
+                  <span className="text-lg font-bold">
+                    {calculateEditTotal().toLocaleString()}
+                  </span>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  Tip: Check &quot;To Balance&quot; for one-time fees (e.g. Admission Fee) —
+                  the amount will be added to the student&apos;s previous balance so it
+                  doesn&apos;t recur in future invoices.
+                </p>
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  className="gap-2"
+                  disabled={generateMutation.isPending}
+                  onClick={() => {
+                    generateMutation.mutate(editParticulars);
+                    setEditDialogOpen(false);
+                  }}
+                >
+                  {generateMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText className="h-4 w-4" />
+                  )}
+                  Generate with Edited Particulars
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -489,10 +633,21 @@ export function FeeInvoiceGeneratorTab({ schoolId }: FeeInvoiceGeneratorTabProps
                   Preview All Classes PDF
                 </Button>
               )}
+              {mode === "student" && (
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  disabled={!canGenerate() || generateMutation.isPending || editLoading}
+                  onClick={openEditDialog}
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit & Generate
+                </Button>
+              )}
               <Button
                 className="gap-2"
                 disabled={!canGenerate() || generateMutation.isPending}
-                onClick={() => generateMutation.mutate()}
+                onClick={() => generateMutation.mutate(undefined)}
               >
                 {generateMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -505,163 +660,6 @@ export function FeeInvoiceGeneratorTab({ schoolId }: FeeInvoiceGeneratorTabProps
           </CardContent>
         </Card>
 
-        {/* Search invoices */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-medium">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              Search Invoices
-              {invoicesData && (
-                <span className="text-xs font-normal text-muted-foreground">
-                  {invoicesData.total} found
-                </span>
-              )}
-              {invoicesData && invoicesData.data.length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="ml-auto gap-2"
-                  onClick={() => downloadPdf({ search: debouncedSearch || undefined, feeMonth: invoiceMonth || undefined })}
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  Download All
-                </Button>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Search filters */}
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              <Input
-                placeholder="Search by name, reg no, father CNIC, or mobile..."
-                value={invoiceSearch}
-                onChange={(e) => { setInvoiceSearch(e.target.value); }}
-                className="w-full sm:w-72"
-              />
-              <Select value={invoiceMonth} onValueChange={(v) => { setInvoiceMonth(v === "all" ? "" : v); setPage(1); }}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="All months" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Months</SelectItem>
-                  {monthOptions.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {invoicesLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : invoicesData && invoicesData.data.length > 0 ? (
-              <div className="space-y-2">
-                {invoicesData.data.map((inv, idx) => (
-                  <motion.div
-                    key={inv.id}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.18, delay: idx * 0.02 }}
-                    className="group flex items-center gap-3 rounded-lg border bg-card p-3 transition-all hover:border-primary/30 hover:shadow-sm"
-                  >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 shrink-0">
-                      <FileText className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm">{inv.invoice_no}</span>
-                        <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                          inv.status === "paid" ? "bg-green-50 text-green-700" :
-                          inv.status === "partial" ? "bg-amber-50 text-amber-700" :
-                          "bg-gray-100 text-gray-600"
-                        }`}>
-                          {inv.status}
-                        </span>
-                      </div>
-                      <p className="truncate text-xs text-muted-foreground mt-0.5">
-                        {inv.student_name} · {inv.class_name ?? "No class"} · {inv.fee_month}
-                      </p>
-                    </div>
-                    <span className="font-semibold text-sm shrink-0">
-                      {inv.total_amount.toLocaleString()}
-                    </span>
-                    <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => previewPdf({ ids: [inv.id] })}
-                        title="Preview PDF"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => downloadPdf({ ids: [inv.id] })}
-                        title="Download PDF"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive/70 hover:text-destructive"
-                        onClick={() => setDeleteTarget(inv)}
-                        title="Delete"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </motion.div>
-                ))}
-
-                {/* Pagination */}
-                {invoicesData.total > 25 && (
-                  <div className="flex items-center justify-between pt-3">
-                    <p className="text-xs text-muted-foreground">
-                      Page {page} of {Math.ceil(invoicesData.total / 25)}
-                    </p>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page <= 1}
-                        onClick={() => setPage(page - 1)}
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page >= Math.ceil(invoicesData.total / 25)}
-                        onClick={() => setPage(page + 1)}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : !hasSearched ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <FileText className="mb-3 h-8 w-8 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">
-                  Search by name, reg no, father CNIC, or mobile to find invoices.
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <FileText className="mb-3 h-8 w-8 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">
-                  No invoices found. Try searching by name, reg no, father CNIC, or mobile.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </motion.div>
     </>
   );

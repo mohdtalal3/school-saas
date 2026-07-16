@@ -10,8 +10,8 @@ import type {
 import { NotFoundError } from "@/lib/api-response";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-function generateRegistrationNo(count: number): string {
-  return `STU-${String(count + 1).padStart(4, "0")}`;
+function generateRegistrationNo(year: number, count: number): string {
+  return `STU-${year}-${String(count + 1).padStart(4, "0")}`;
 }
 
 function buildStudent(data: Record<string, unknown>): Student {
@@ -163,11 +163,30 @@ export async function createStudent(
     const raw = input.registration_no.trim().toUpperCase();
     registration_no = raw.startsWith("STU-") ? raw : `STU-${raw}`;
   } else {
-    const { count } = await supabase
+    // Generate STU-YY-NNNN using year from date_of_admission
+    const admitYear = input.date_of_admission
+      ? new Date(input.date_of_admission).getFullYear()
+      : new Date().getFullYear();
+    const yy = String(admitYear);
+    const { count: yearCount } = await supabase
       .from("students")
       .select("*", { count: "exact", head: true })
-      .eq("school_id", schoolId);
-    registration_no = generateRegistrationNo(count ?? 0);
+      .eq("school_id", schoolId)
+      .like("registration_no", `STU-${yy}-%`);
+    registration_no = generateRegistrationNo(admitYear, yearCount ?? 0);
+  }
+
+  // Auto-calculate previous_annual_due from class annual_dues minus discount
+  let previous_annual_due = input.previous_annual_due ?? 0;
+  if (input.class_id) {
+    const { data: cls } = await supabase
+      .from("classes")
+      .select("annual_dues")
+      .eq("id", input.class_id)
+      .single();
+    const classAnnualDues = (cls as Record<string, unknown>)?.annual_dues as number ?? 0;
+    const discount = input.annual_dues_discount ?? 0;
+    previous_annual_due = Math.max(0, classAnnualDues - discount);
   }
 
   const insertData: Record<string, unknown> = {
@@ -191,7 +210,8 @@ export async function createStudent(
     is_free: input.is_free ?? false,
     previous_balance: input.previous_balance ?? 0,
     annual_dues_discount: input.annual_dues_discount ?? 0,
-    previous_annual_due: input.previous_annual_due ?? 0,
+    previous_annual_due: previous_annual_due,
+    annual_dues_original: previous_annual_due,
     religion: input.religion ?? null,
     family: input.family ?? null,
     total_siblings: input.total_siblings ?? 0,

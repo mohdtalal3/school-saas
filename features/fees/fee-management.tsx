@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { FeeParticularsTab } from "./fee-particulars-tab";
 import { FeeInvoiceGeneratorTab } from "./fee-invoice-generator-tab";
+import { CollectFeesTab } from "./collect-fees-tab";
+import { InvoiceSearchTab } from "./invoice-search-tab";
 
 interface FeeManagementProps {
   schoolId: string;
@@ -29,6 +31,16 @@ export function FeeManagement({ schoolId }: FeeManagementProps) {
       {/* Invoice Generator tab */}
       {feeTab === "invoices" && (
         <FeeInvoiceGeneratorTab schoolId={schoolId} />
+      )}
+
+      {/* Search Invoices tab */}
+      {feeTab === "search" && (
+        <InvoiceSearchTab schoolId={schoolId} />
+      )}
+
+      {/* Collect Fees tab */}
+      {feeTab === "collect" && (
+        <CollectFeesTab schoolId={schoolId} />
       )}
     </motion.div>
   );

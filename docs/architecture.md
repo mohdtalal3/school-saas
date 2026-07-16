@@ -83,9 +83,9 @@ A single Next.js 15 (App Router) application that hosts:
 - Examples:
   - `schoolService.create({ name, adminEmail, adminPassword })`
   - `settingsService.updateInstituteProfile(schoolId, payload)`
-  - `employeeService.getEmployees(schoolId)` / `createEmployee` / `updateEmployee` / `deleteEmployee`
+  - `employeeService.getEmployees(schoolId)` / `createEmployee` (auto-generates EMP-YYYY-NNNN from date_of_joining) / `updateEmployee` / `deleteEmployee`
   - `feeService.getFeeParticulars(schoolId)` / `createFeeParticular` / `updateFeeParticular` / `deleteFeeParticular`
-  - `feeInvoiceService.generateInvoices(schoolId, payload)` / `getInvoices` / `deleteInvoice`
+  - `feeInvoiceService.generateInvoices(schoolId, payload)` (auto-generates INV-MM_YYYY_NNNN, filters FINE, bakes discounts directly into charge amounts — no separate discount line items, reads annual due from student.previous_annual_due running balance; supports `custom_particulars` for student-wise Edit & Generate mode — uses edited amounts directly, separates FINE into `fine_after_due`, applies discounts to charge amounts, adds `add_to_balance` items to `student.previous_balance` after generation) / `getInvoices` / `getInvoicesByIds` / `getInvoicesByClassAndMonth` / `getInvoicesByMonth` / `deleteInvoice` / `collectFee(schoolId, payload)` (records payment, updates invoice status/paid_amount, reduces student.previous_balance by amount paid toward PREVIOUS BALANCE particular + adds unpaid non-carried charges, adjusts previous_annual_due for partial annual due payments) / `deletePayment(schoolId, paymentId)` (reverses payment: restores invoice particulars, reverses previous_balance and previous_annual_due changes) / `getPaymentHistory(schoolId, invoiceId)` / `payAnnualDue(schoolId, studentId, amount)`
 - Errors thrown as `AppError` subclasses; the API layer converts them to JSON responses.
 
 ### 4. Data Layer (`lib/supabase`)
@@ -110,6 +110,13 @@ Two distinct PDF generation approaches are used:
 - **Selection modes:** Both support "all" (optionally filtered by class for students) and "select" (individual pick via server-side search). PDF endpoint receives `ids` or `classIds` as query params and fetches only what's needed.
 - **Why Puppeteer:** Supports complex CSS (gradients, box-shadows, web fonts, z-index layering) needed for the premium ID card design
 - **Card size:** CR80 portrait (53.98mm × 85.6mm), 6 cards per A4 page
+
+#### `@react-pdf/renderer` (Fee Invoices)
+- **Template:** `features/fees/fee-invoice-pdf.tsx` — 3 invoices per A4 page (stacked vertically), black & white palette
+- **Viewer:** `features/fees/fee-invoice-pdf-viewer.tsx` — client-side `PDFViewer` wrapper
+- **Page:** `app/(admin)/school/fees/invoices/page.tsx` — server-side page that fetches invoices by IDs, class+month, all-classes+month, or search+month filters
+- **Features:** School header with logo, student info (name, reg, father, mobile), particulars table (Particular, Charged, Paid, Remaining columns), Total Payable row, payment summary (Paid in this receipt, Remaining Balance), status badge, footer with month/due date/late fine info. Discounts are baked into charge amounts — no separate discount line items shown.
+- **Bulk download:** Uses filter params (search, feeMonth, allClasses) instead of passing all invoice IDs in URL — scalable for 1500+ students
 
 #### `@react-pdf/renderer` (Job Offer Letters)
 - **Template:** `features/employees/job-offer-letter-pdf.tsx` — React component tree → PDF
@@ -278,5 +285,8 @@ All list views and search-driven features follow the same pattern:
 | --- | --- |
 | `fee-management.tsx` | Main fee page — tab routing via `?tab=` URL param |
 | `fee-particulars-tab.tsx` | Fee particulars config — list, add, edit, delete; fixed vs custom line items; auto-seeded defaults |
-| `fee-invoice-generator-tab.tsx` | Invoice generator — class/student/all-classes mode, form, generate, PDF preview/download |
-| `invoice-html.ts` | HTML template for fee invoices (2 per A4 page, Puppeteer) |
+| `fee-invoice-generator-tab.tsx` | Invoice generator — class/student/all-classes mode, form, generate, PDF preview/download; server-side search with debounce (name, reg no, father CNIC, mobile), month filter defaults to current month, Download All by month filter (no IDs in URL), duplicate prevention per month |
+| `fee-invoice-pdf.tsx` | `@react-pdf/renderer` fee invoice PDF — 3 invoices per A4 page (stacked vertically), black & white, school header, student info, particulars table (Charged/Paid/Remaining), Total Payable, payment summary, footer with due date + late fine info. Discounts baked into charge amounts |
+| `fee-invoice-pdf-viewer.tsx` | Client-side `PDFViewer` wrapper for fee invoices |
+| `collect-fees-tab.tsx` | Collect fees — search invoices by name/reg no/father CNIC/mobile/invoice no + month filter (defaults to current month), per-particular payment breakdown with allocation inputs, Allocate Full / Clear buttons, payment note, print invoice prompt after successful payment |
+| `invoice-search-tab.tsx` | Search invoices — debounced search by name/reg no/father CNIC/mobile, month filter, preview/download PDF per invoice or bulk, delete invoice |

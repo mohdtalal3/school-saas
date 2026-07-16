@@ -140,6 +140,7 @@ export interface Student {
   previous_balance: number;
   annual_dues_discount: number;
   previous_annual_due: number;
+  annual_dues_original: number;
   religion: string | null;
   family: string | null;
   total_siblings: number;
@@ -213,9 +214,13 @@ export type UpdateFeeParticular = Partial<
 
 // ── Fee Invoices ──────────────────────────────────────────────
 
+export type ParticularStatus = "unpaid" | "partial" | "paid" | "waived";
+
 export interface InvoiceParticular {
   label: string;
   amount: number;
+  paid_amount: number;
+  status: ParticularStatus;
   is_fixed: boolean;
   source_type: string | null;
 }
@@ -234,12 +239,24 @@ export interface FeeInvoice {
   fine_after_due: number;
   particulars: InvoiceParticular[];
   total_amount: number;
+  paid_amount: number;
+  waived_amount: number;
   status: "unpaid" | "partial" | "paid";
+  payment_date: string | null;
+  payment_note: string | null;
   father_name: string | null;
   father_nic: string | null;
   mobile: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface CustomParticular {
+  label: string;
+  amount: number;
+  is_fixed: boolean;
+  source_type: string | null;
+  add_to_balance?: boolean;
 }
 
 export interface GenerateInvoicePayload {
@@ -249,4 +266,31 @@ export interface GenerateInvoicePayload {
   fee_month: string;
   due_date: string;
   fine_after_due?: number;
+  custom_particulars?: CustomParticular[];
+}
+
+// ── Fee Collection / Payments ─────────────────────────────────
+
+export interface FeeAllocation {
+  label: string;
+  amount: number;
+}
+
+export interface CollectFeePayload {
+  invoice_id: string;
+  allocations: FeeAllocation[];
+  payment_note?: string;
+  add_fine?: boolean;
+}
+
+export interface FeePayment {
+  id: string;
+  school_id: string;
+  invoice_id: string;
+  student_id: string;
+  amount: number;
+  payment_date: string;
+  note: string | null;
+  particular_breakdown?: FeeAllocation[];
+  created_at: string;
 }

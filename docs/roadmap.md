@@ -45,7 +45,7 @@
 - ✅ Employee photo upload (Supabase Storage)
 - ✅ Employee attachments (upload, download, delete)
 - ✅ Employee active/inactive toggle
-- ✅ Auto-generated employee codes and login usernames
+- ✅ Auto-generated employee codes (EMP-YYYY-NNNN, year from date_of_joining, resets per year) and login usernames
 - ✅ Manage Login tab (username, password reset, login active toggle)
 - ✅ Basic List tab (DirectoryTable with Excel export — styled with colors, borders, alternating rows; export selected, page, all, or by class)
 - ✅ Attachments tab (left panel employee list, right panel upload/download/delete)
@@ -81,7 +81,7 @@
 ### 2.6 Students (IN PROGRESS)
 
 - ✅ Student CRUD (create, list, edit, delete, view) — card grid view with photo, class, fee
-- ✅ Student fields: name, photo, registration no (auto), date of admission, class dropdown, discount, mobile, DOB, gender, identification mark, blood group, disease, birth form ID, additional note, orphan, OSC, is_free, previous_balance, annual_dues_discount, previous_annual_due, religion, family, total siblings, address, father info
+- ✅ Student fields: name, photo, registration no (auto STU-YYYY-NNNN, year from date_of_admission, resets per year), date of admission, class dropdown, discount, mobile, DOB, gender, identification mark, blood group, disease, birth form ID, additional note, orphan, OSC, is_free, previous_balance, annual_dues_discount, previous_annual_due (auto-calculated from class.annual_dues - annual_dues_discount on creation), religion, family, total siblings, address, father info
 - ✅ Class dropdown loads from classes API (fee shown, net fee calculated)
 - ✅ Photo upload via Supabase Storage (student-photos bucket)
 - ✅ Student attachments (birth certificate, CNIC, results, etc.) — student-attachments bucket
@@ -124,9 +124,18 @@
 ### 2.11 Fees (IN PROGRESS)
 
 - ✅ Fee Particulars — configurable fee line items per school (8 defaults seeded: 5 fixed auto-resolved from class/student data, 3 custom with user-set amounts), add/edit/delete custom particulars, tab-based UI via URL `?tab=particulars`
-- ✅ Invoice Generator — generate fee invoices class-wise, student-wise, or all-classes at once; auto-sequential invoice numbers (INV-00001), particulars resolved from fee particulars config, PDF generation via Puppeteer (2 invoices per A4 page), search/filter/delete invoices, unique invoice_no for cross-module reference
+- ✅ Invoice Generator — generate fee invoices class-wise, student-wise, or all-classes at once; auto-sequential invoice numbers (INV-MM_YYYY_NNNN, resets per month), particulars resolved from fee particulars config with discounts baked into charge amounts, PDF generation via `@react-pdf/renderer` (3 invoices per A4 page stacked vertically, black & white), search/filter/delete invoices, month filter defaults to current month, unique invoice_no for cross-module reference
+- ✅ Fine handling — fine auto-resolved from fee particulars (label contains "FINE"), excluded from particulars table and total payable, stored as `fine_after_due` for display in PDF footer only; applied at payment time if late
+- ✅ Duplicate prevention — generation skips students who already have an invoice for the same month
+- ✅ Server-side invoice search — debounced search (300ms) by student name, registration no, father CNIC, or mobile; month filter defaults to current month; results only shown after search
+- ✅ Bulk PDF download — uses filter params (search + feeMonth) instead of passing all invoice IDs in URL; scalable for 1500+ students
+- ✅ Denormalized father_nic on fee_invoices for fast search without JOIN
+- ✅ Annual dues handling — ANNUAL DUE particular reads from student.previous_annual_due (running balance, not class.annual_dues); ANNUAL DUES DISCOUNT already baked into previous_annual_due at creation/promotion, skipped at invoice generation to avoid double-discounting; previous_annual_due auto-set on student creation (class.annual_dues - discount) and on promotion to new class; annual_dues_original column tracks initial amount for reversal cap; annual dues filtered out when balance is 0 (fully paid for year)
+- ✅ Student-wise Edit & Generate — edit dialog showing all fee particulars pre-resolved with default amounts (class fee, previous balance, annual due, discount), editable labels/amounts, add/remove line items, "To Balance" checkbox auto-ticked (adds one-time fees like admission fee to student.previous_balance after generation so they don't recur), live total calculation, FINE separated into fine_after_due, discounts applied to charge amounts (not shown as separate line items)
+- ✅ Collect Fees — search invoices by name, reg no, father CNIC, mobile, or invoice number + month filter (defaults to current month); per-particular payment breakdown (partial payments per line item, e.g. pay 500 of 1000 annual due); "Allocate Full" / "Clear" quick actions (Allocate Full caps at net payable); invoice status auto-updates (unpaid → partial → paid); previous_balance reduced by amount paid toward PREVIOUS BALANCE particular + unpaid non-carried charges added; partial annual due payments reduce student.previous_annual_due; payment history per invoice; payment note field; fee_payments table records each transaction; **print invoice prompt** after successful payment (opens PDF viewer in new tab); delete payment reverses all balance changes (previous_balance restored, previous_annual_due capped at annual_dues_original)
+- ✅ Discount handling — discounts (DISCOUNT IN FEE, ANNUAL DUES DISCOUNT) are baked directly into charge amounts at invoice generation time; no separate discount line items appear in invoices, PDF, or payment allocation UI; ANNUAL DUES DISCOUNT skipped at generation (already applied to previous_annual_due at creation/promotion)
+- ✅ Invoice PDF — 3 invoices per A4 page (stacked vertically), particulars table with Charged/Paid/Remaining columns, Total Payable row, payment summary (Paid in this receipt, Remaining Balance), status badge, footer with month/due date/late fine
 - ⏳ Fee structure per class
-- ⏳ Payment recording
 - ⏳ Outstanding reports
 
 ---

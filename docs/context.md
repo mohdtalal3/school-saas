@@ -24,9 +24,10 @@ Built and working:
 - **Student ID Cards** — Same Puppeteer PDF design as employee ID cards, STUDENT ID badge, student-specific fields (Reg No, Class, Father, Mobile, DOB, Blood Group), All mode with class multi-select / Select mode with server-side search (name & reg no only), theme customization, iframe preview + download
 - **Job Offer Letter** — `@react-pdf/renderer` based, premium template with navy/gold color scheme matching ID cards, school logo watermark (centered, fixed overlay), 2-page letter (particulars + terms), signature blocks, bottom accent strip
 - **Classes** — full CRUD (create, list, edit, delete), card grid view with boys/girls counts, enrollment progress bar, class name + fee + annual_dues + class teacher + capacity fields, empty state prompting to create first class
-- **Students** — full CRUD (create, list, edit, delete, view), card grid view with photo/class/fee, class dropdown with fee display, auto-generated registration no, photo upload, student attachments (birth cert, CNIC, results), search by name/reg no/father/mobile, filter by class, view details dialog with all fields, Excel bulk import (styled template with Instructions sheet), family grouping (auto-group by father CNIC), promote students (bulk class update), student ID cards
+- **Students** — full CRUD (create, list, edit, delete, view), card grid view with photo/class/fee, class dropdown with fee display, auto-generated registration no (STU-YYYY-NNNN, year from date_of_admission), photo upload, student attachments (birth cert, CNIC, results), search by name/reg no/father/mobile, filter by class, view details dialog with all fields, Excel bulk import (styled template with Instructions sheet), family grouping (auto-group by father CNIC), promote students (bulk class update + previous_annual_due reset from new class), student ID cards
 - **Fee Particulars** — configurable fee line items per school, 8 default particulars seeded on first access (5 fixed auto-resolved from class/student data, 3 custom with user-set amounts), add/edit/delete custom particulars, tab-based UI via URL `?tab=particulars`
-- **Fee Invoice Generator** — generate fee invoices class-wise, student-wise, or all-classes at once; auto-sequential invoice numbers (INV-00001), particulars resolved from fee particulars config, PDF generation via Puppeteer (2 invoices per A4 page), search/filter/delete invoices
+- **Fee Invoice Generator** — generate fee invoices class-wise, student-wise, or all-classes at once; auto-sequential invoice numbers (INV-MM_YYYY_NNNN, resets per month), particulars resolved from fee particulars config with **discounts baked directly into charge amounts** (no separate discount line items), PDF generation via `@react-pdf/renderer` (3 invoices per A4 page stacked vertically, black & white); fine auto-resolved from fee particulars (excluded from total, shown in footer only); annual due read from student.previous_annual_due (running balance, not class.annual_dues), ANNUAL DUES DISCOUNT already baked into previous_annual_due at creation/promotion (skipped at generation to avoid double-discounting); duplicate prevention (skips students with existing invoice for same month); server-side search with 300ms debounce (name, reg no, father CNIC, mobile) + month filter (defaults to current month); bulk PDF download uses filter params instead of IDs in URL; **student-wise Edit & Generate** — edit dialog showing all fee particulars pre-resolved with default amounts, editable labels/amounts, add/remove line items, "To Balance" checkbox auto-ticked (adds amount to student.previous_balance after generation for one-time fees), live total calculation
+- **Collect Fees** — search invoices by name, reg no, father CNIC, mobile, or invoice number + month filter (defaults to current month); per-particular payment breakdown (user can pay partial amounts per line item, e.g. pay 500 of 1000 annual due); "Allocate Full" / "Clear" quick actions (Allocate Full caps at net payable); invoice status auto-updates (unpaid → partial → paid); previous_balance reduced by amount paid toward PREVIOUS BALANCE particular + unpaid non-carried charges added; partial annual due payments reduce student.previous_annual_due; payment history per invoice (view all past transactions); payment note field (cash, cheque, bank transfer etc.); fee_payments table records each transaction with particular breakdown; **print invoice prompt** after successful payment (opens PDF viewer in new tab); **delete payment** reverses all balance changes (previous_balance restored, previous_annual_due capped at annual_dues_original)
 
 Not yet built (Phase 2/3):
 - Teacher / Parent / Student portals (role cards exist in the login UI but show a "coming soon" toast)
@@ -127,7 +128,7 @@ npm run dev          # http://localhost:3000
 | `/school/classes` | Classes management — card grid, create/edit/delete, boys/girls counts, progress bar |
 | `/school/students` | Student management — tabs: All Students, Basic List, Admission Letter, Attachments, Family, Promote, ID Cards |
 | `/school/students/admission-letter/[studentId]` | Admission letter PDF viewer (full-screen) |
-| `/school/fees` | Fee management — tabs: Fee Particulars, Invoice Generator |
+| `/school/fees` | Fee management — tabs: Fee Particulars, Invoice Generator, Collect Fees, Search Invoices |
 | `/master-login` | **Hidden** — type URL directly. Master super-admin login (creates/manages schools). Not linked anywhere in the UI. |
 | `/master` | Master dashboard |
 | `/master/create-school` | Create school + first admin |
@@ -219,8 +220,7 @@ app/
     │   ├── [schoolId]/particulars/route.ts              GET list, POST create (seeds defaults if empty)
     │   ├── [schoolId]/particulars/[particularId]/route.ts  PATCH, DELETE
     │   ├── [schoolId]/invoices/route.ts              GET list (search, classId, feeMonth, status), POST generate (class/student/all-classes)
-    │   ├── [schoolId]/invoices/[invoiceId]/route.ts  DELETE
-    │   └── invoices/pdf/route.ts                     GET — Puppeteer Fee Invoice PDF (2 per A4 page)
+    │   └── [schoolId]/invoices/[invoiceId]/route.ts  DELETE
 
 components/
 ├── providers.tsx            QueryClientProvider + ToastProvider (root)
@@ -275,8 +275,11 @@ features/
 fees/
 ├── fee-management.tsx              Main page — tab routing via ?tab=
 ├── fee-particulars-tab.tsx         Fee particulars config — list, add, edit, delete; fixed vs custom line items
-├── fee-invoice-generator-tab.tsx   Invoice generator — class/student/all-classes mode, form, generate, PDF preview/download
-└── invoice-html.ts                 HTML template for fee invoices (2 per A4 page, Puppeteer)
+├── fee-invoice-generator-tab.tsx   Invoice generator — class/student/all-classes mode, form, generate, PDF preview/download; server-side search with debounce, month filter (defaults to current month), bulk download by filters
+├── fee-invoice-pdf.tsx             @react-pdf/renderer fee invoice PDF — 3 per A4 page (stacked vertically), black & white, discounts baked into charge amounts
+├── fee-invoice-pdf-viewer.tsx      Client-side PDFViewer wrapper for fee invoices
+├── collect-fees-tab.tsx            Collect fees — search + month filter (defaults to current month), per-particular payment allocation, Allocate Full/Clear, print invoice prompt after payment
+└── invoice-search-tab.tsx          Search invoices — debounced search, month filter, preview/download PDF, delete invoice
 
 lib/
 ├── env.ts                    Zod-validated env access
@@ -295,7 +298,7 @@ services/                     (business logic; no JSX)
                                 getStudentAttachments, uploadStudentAttachment, deleteStudentAttachment,
                                 uploadStudentPhoto, importStudents, getFamilies, promoteStudents
 └── fee.service.ts            getFeeParticulars (auto-seeds defaults), createFeeParticular, updateFeeParticular, deleteFeeParticular
-└── fee-invoice.service.ts    generateInvoices (class/student/all-classes), getInvoices, getInvoicesByIds, getInvoicesByClassAndMonth, getInvoicesByMonth, deleteInvoice
+└── fee-invoice.service.ts    generateInvoices (class/student/all-classes, duplicate prevention, fine from particulars, discounts baked into charge amounts), getInvoices (search by name/reg no/father_nic/mobile), getInvoicesByIds, getInvoicesByClassAndMonth, getInvoicesByMonth, deleteInvoice, collectFee (per-particular payments, previous_balance reduction + carry-forward, annual_due reduction), deletePayment (reverses all balance changes), getPaymentHistory, payAnnualDue
 
 types/
 ├── school.types.ts           School, SchoolAdmin, Employee, NewEmployee, UpdateEmployee, NewSchool, UpdateSchool,
@@ -316,7 +319,13 @@ supabase/
     ├── 0009_annual_dues.sql            annual_dues on classes + annual_dues_discount + previous_annual_due on students
     ├── 0010_fee_particulars.sql           fee_particulars table (label, amount, is_fixed, source_type, sort_order)
     ├── 0011_fee_invoices.sql              fee_invoices table (invoice_no, student, class, particulars JSONB, total, status)
-    └── ...
+    ├── 0012_fee_invoices_father_nic.sql       father_nic column on fee_invoices + index
+    ├── 0013_update_annual_due_source_type.sql  change ANNUAL DUE source_type to student.previous_annual_due
+    ├── 0014_fee_payments.sql              fee_payments table + paid_amount/payment_date/payment_note on fee_invoices
+    ├── 0015_invoice_pdf_enhancements.sql   waived_amount column on fee_invoices
+    ├── 0016_collect_fee_allocations.sql    per-particular payment allocations
+    ├── 0017_per_particular_payments.sql    per-particular payment tracking in JSONB particulars
+    └── 0018_annual_dues_tracking.sql       annual_dues_original column on students (reversal cap)
 ```
 
 ---
@@ -368,7 +377,7 @@ Only Admin has a backend. Employee/Student, Sign Up, and Forgot-password show in
 `id` (uuid pk), `school_id` (fk → schools, ON DELETE CASCADE), `name`, `email`, `password_hash` (bcrypt), `is_active` (bool), `created_at`, `updated_at`; unique `(school_id, email)`.
 
 ### `employees`
-`id` (uuid pk), `school_id` (fk → schools, ON DELETE CASCADE), `employee_code` (auto-generated, unique per school), `name`, `role` (designation), `father_husband_name`, `gender` (male/female/other), `religion`, `cnic`, `date_of_birth`, `date_of_joining`, `salary` (numeric), `experience`, `phone`, `email`, `address`, `education`, `photo_url`, `login_username` (auto-generated), `password_hash` (bcrypt), `is_login_active` (bool), `is_active` (bool), `created_at`, `updated_at`.
+`id` (uuid pk), `school_id` (fk → schools, ON DELETE CASCADE), `employee_code` (auto-generated EMP-YYYY-NNNN, year from date_of_joining, unique per school per year), `name`, `role` (designation), `father_husband_name`, `gender` (male/female/other), `religion`, `cnic`, `date_of_birth`, `date_of_joining`, `salary` (numeric), `experience`, `phone`, `email`, `address`, `education`, `photo_url`, `login_username` (auto-generated), `password_hash` (bcrypt), `is_login_active` (bool), `is_active` (bool), `created_at`, `updated_at`.
 
 ### `employee_attachments`
 Attachments uploaded for employees (documents, certificates, etc.). Stored in Supabase Storage bucket `employee-attachments`.
@@ -377,7 +386,7 @@ Attachments uploaded for employees (documents, certificates, etc.). Stored in Su
 `id` (uuid pk), `school_id` (fk → schools, ON DELETE CASCADE), `name` (text), `fee` (numeric, default 0), `annual_dues` (numeric, default 0), `class_teacher` (text, nullable), `capacity` (int, default 50), `is_active` (bool, default true), `created_at`, `updated_at`. Unique constraint on `(school_id, name)`. Boys/girls counts derived from `students` table.
 
 ### `students`
-`id` (uuid pk), `school_id` (fk → schools, ON DELETE CASCADE), `class_id` (fk → classes, ON DELETE SET NULL), `registration_no` (auto STU-0001), `name`, `photo_url`, `date_of_admission` (default CURRENT_DATE), `discount` (numeric, default 0), `mobile`, `date_of_birth`, `gender` (male/female/other), `identification_mark`, `blood_group`, `disease`, `birth_form_id`, `additional_note`, `is_orphan` (bool), `is_osc` (bool), `is_free` (bool, default false), `previous_balance` (numeric, default 0), `annual_dues_discount` (numeric, default 0), `previous_annual_due` (numeric, default 0), `religion`, `family`, `total_siblings` (int, default 0), `address`, `father_name`, `father_nic`, `father_profession`, `is_active` (bool, default true), `created_at`, `updated_at`.
+`id` (uuid pk), `school_id` (fk → schools, ON DELETE CASCADE), `class_id` (fk → classes, ON DELETE SET NULL), `registration_no` (auto STU-YYYY-NNNN, year from date_of_admission, resets per year), `name`, `photo_url`, `date_of_admission` (default CURRENT_DATE), `discount` (numeric, default 0), `mobile`, `date_of_birth`, `gender` (male/female/other), `identification_mark`, `blood_group`, `disease`, `birth_form_id`, `additional_note`, `is_orphan` (bool), `is_osc` (bool), `is_free` (bool, default false), `previous_balance` (numeric, default 0 — running balance, reduced by payments toward PREVIOUS BALANCE particular, increased by unpaid non-carried charges), `annual_dues_discount` (numeric, default 0), `previous_annual_due` (numeric, default 0 — running balance, auto-set from class.annual_dues - discount on creation/promotion, reduced by payments), `annual_dues_original` (numeric, default 0 — initial annual dues for the year, set at creation/promotion, used as cap when reversing payments), `religion`, `family`, `total_siblings` (int, default 0), `address`, `father_name`, `father_nic`, `father_profession`, `is_active` (bool, default true), `created_at`, `updated_at`.
 
 ### `student_attachments`
 Documents uploaded for students (birth certificate, CNIC/B-Form, previous result, medical, etc.). Stored in Supabase Storage bucket `student-attachments`.
@@ -400,13 +409,13 @@ CREATE TABLE fee_particulars (
 );
 ```
 
-- **Fixed particulars** (`is_fixed = true`): amount is auto-resolved from class/student data at fee calculation time. `source_type` identifies the source field (e.g. `class.fee`, `student.previous_balance`, `student.discount`, `student.annual_dues_discount`, `class.annual_dues`).
+- **Fixed particulars** (`is_fixed = true`): amount is auto-resolved from class/student data at fee calculation time. `source_type` identifies the source field (e.g. `class.fee`, `student.previous_balance`, `student.discount`, `student.previous_annual_due`).
 - **Custom particulars** (`is_fixed = false`): user sets a fixed `amount`. Users can add/edit/delete these.
 - **Default seed** (8 items): MONTHLY TUITION FEE (fixed), ADMISSION FEE (custom), REGISTRATION FEE (custom), FINE (custom), PREVIOUS BALANCE (fixed), DISCOUNT IN FEE (fixed), ANNUAL DUES DISCOUNT (fixed), ANNUAL DUE (fixed).
 - Unique constraint on `(school_id, lower(label))`.
 
 ### `fee_invoices`
-Generated fee invoices per student. Each invoice has a unique `invoice_no` (INV-00001 format, sequential per school).
+Generated fee invoices per student. Each invoice has a unique `invoice_no` (INV-MM_YYYY_NNNN format, sequential per school per month-year).
 
 ```sql
 CREATE TABLE fee_invoices (
@@ -425,6 +434,7 @@ CREATE TABLE fee_invoices (
   total_amount    NUMERIC(12,2) NOT NULL DEFAULT 0,
   status          TEXT NOT NULL DEFAULT 'unpaid',
   father_name     TEXT,
+  father_nic      TEXT,
   mobile          TEXT,
   created_at      TIMESTAMPTZ DEFAULT now(),
   updated_at      TIMESTAMPTZ DEFAULT now()
@@ -432,9 +442,12 @@ CREATE TABLE fee_invoices (
 ```
 
 - **invoice_no**: unique per school, auto-generated as `INV-00001` (sequential).
-- **particulars**: JSONB array of `{ label, amount, is_fixed, source_type }` — resolved at generation time from fee_particulars config.
-- **total_amount**: calculated from particulars (discounts subtracted).
+- **particulars**: JSONB array of `{ label, amount, paid_amount, status, is_fixed, source_type }` — resolved at generation time from fee_particulars config. **Discounts are baked into charge amounts** (no separate discount line items). Fine particulars (label contains "FINE") are excluded from particulars and total; stored separately as `fine_after_due`. Each particular tracks `paid_amount` (cumulative) and `status` (`unpaid` | `partial` | `paid` | `waived`).
+- **total_amount**: sum of all particular amounts (net payable after discounts). Fine is NOT added to total — applied at payment time if late.
+- **fine_after_due**: auto-resolved from fee particulars with "FINE" in label. Shown in PDF footer as info only.
+- **father_nic**: denormalized from students table for fast search without JOIN.
 - **status**: `unpaid` | `partial` | `paid`.
+- **Duplicate prevention**: generation skips students who already have an invoice for the same `fee_month`.
 - Unique constraint on `(school_id, invoice_no)`.
 
 ### RLS

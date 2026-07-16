@@ -92,8 +92,8 @@ const SOURCE_LABELS: Record<string, string> = {
   "class.fee": "Class Fee",
   "student.previous_balance": "Student Previous Balance",
   "student.discount": "Student Discount",
+  "student.previous_annual_due": "Student Previous Annual Due",
   "student.annual_dues_discount": "Student Annual Dues Discount",
-  "class.annual_dues": "Class Annual Dues",
 };
 
 // ── Component ──────────────────────────────────────────────────────────────────

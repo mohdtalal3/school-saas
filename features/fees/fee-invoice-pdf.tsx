@@ -26,50 +26,47 @@ const s = StyleSheet.create({
     backgroundColor: WHITE,
   },
 
-  // 2x2 grid layout for 4 invoices per page
+  // 3 invoices per page, full width, stacked vertically
   body: {
-    padding: "18 16 18 16",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    rowGap: 24,
+    padding: "20 24 20 24",
+    flexDirection: "column",
+    gap: 16,
   },
 
-  // ── Invoice card — ~half width ──
+  // ── Invoice card — full width ──
   invoiceCard: {
-    width: "48.5%",
+    width: "100%",
     borderWidth: 1.5,
     borderColor: BLACK,
-    marginBottom: 6,
   },
 
   // ── Header (stacked: school info row, then invoice meta bar) ──
   header: {
-    padding: "5 8",
+    padding: "6 12",
     borderBottomWidth: 1,
     borderBottomColor: BLACK,
   },
   headerTop: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 3,
+    marginBottom: 4,
   },
-  logoWrap: { marginRight: 8 },
-  logo: { width: 36, height: 36, objectFit: "contain" },
+  logoWrap: { marginRight: 10 },
+  logo: { width: 44, height: 44, objectFit: "contain" },
   logoPlaceholder: {
-    width: 36, height: 36, backgroundColor: WHITE,
+    width: 44, height: 44, backgroundColor: WHITE,
     borderWidth: 1, borderColor: BLACK,
-    justifyContent: "center", alignItems: "center", borderRadius: 18,
+    justifyContent: "center", alignItems: "center", borderRadius: 22,
   },
-  logoInitial: { fontSize: 15, color: BLACK, fontFamily: "Helvetica-Bold" },
+  logoInitial: { fontSize: 18, color: BLACK, fontFamily: "Helvetica-Bold" },
   schoolInfo: { flex: 1 },
   schoolName: {
-    fontSize: 10, fontFamily: "Helvetica-Bold", color: BLACK,
-    letterSpacing: 0.2, marginBottom: 0.5,
+    fontSize: 13, fontFamily: "Helvetica-Bold", color: BLACK,
+    letterSpacing: 0.3, marginBottom: 1,
   },
-  schoolTagline: { fontSize: 7, color: BLACK, marginBottom: 0.5 },
-  schoolAddr: { fontSize: 6.5, color: BLACK },
-  schoolPhone: { fontSize: 6.5, color: BLACK },
+  schoolTagline: { fontSize: 8.5, color: BLACK, marginBottom: 0.5 },
+  schoolAddr: { fontSize: 8, color: BLACK },
+  schoolPhone: { fontSize: 8, color: BLACK },
 
   // Invoice meta bar (below school info)
   metaBar: {
@@ -79,14 +76,14 @@ const s = StyleSheet.create({
   },
   metaLeft: { flexDirection: "row" },
   metaRight: { flexDirection: "row" },
-  metaLabel: { fontSize: 7, fontFamily: "Helvetica-Bold", color: BLACK, marginRight: 2 },
-  metaValue: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: BLACK, marginRight: 10 },
+  metaLabel: { fontSize: 8.5, fontFamily: "Helvetica-Bold", color: BLACK, marginRight: 3 },
+  metaValue: { fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK, marginRight: 12 },
 
   // ── Student bar ──
   studentBar: {
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: "3 8",
+    padding: "4 12",
     borderBottomWidth: 0.5,
     borderBottomColor: BLACK,
   },
@@ -96,61 +93,115 @@ const s = StyleSheet.create({
   },
   studentLeft: { flexDirection: "row", alignItems: "center" },
   studentRight: { flexDirection: "row", alignItems: "center" },
-  fieldLabel: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: BLACK, marginRight: 3 },
-  fieldValue: { fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK },
+  fieldLabel: { fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK, marginRight: 4 },
+  fieldValue: { fontSize: 10.5, fontFamily: "Helvetica-Bold", color: BLACK },
 
-  // ── Particulars table ──
+  // ── Particulars table (4 columns: Particular, Charged, Paid, Remaining) ──
   table: { width: "100%" },
   tableHeader: {
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: BLACK,
-    padding: "3 8",
+    padding: "4 12",
   },
-  thLabel: { flex: 1, fontSize: 8, fontFamily: "Helvetica-Bold", color: BLACK, textTransform: "uppercase" },
-  thAmount: { width: 85, fontSize: 8, fontFamily: "Helvetica-Bold", color: BLACK, textTransform: "uppercase", textAlign: "right" },
+  thLabel: { flex: 1, fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK, textTransform: "uppercase" },
+  thNum: { width: 70, fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK, textTransform: "uppercase", textAlign: "right" },
 
   tableRow: {
     flexDirection: "row",
-    padding: "2 8",
+    padding: "3 12",
     borderBottomWidth: 0.5,
     borderBottomColor: BLACK,
   },
-  tdLabel: { flex: 1, fontSize: 8.5, color: BLACK },
-  tdAmount: { width: 85, fontSize: 8.5, color: BLACK, textAlign: "right", fontFamily: "Helvetica-Bold" },
+  tdLabel: { flex: 1, fontSize: 9.5, color: BLACK },
+  tdNum: { width: 70, fontSize: 9.5, color: BLACK, textAlign: "right", fontFamily: "Helvetica-Bold" },
+  tdNumPaid: { width: 70, fontSize: 9.5, color: BLACK, textAlign: "right" },
+  tdNumRem: { width: 70, fontSize: 9.5, color: BLACK, textAlign: "right", fontFamily: "Helvetica-Bold" },
   fixedTag: {
     fontSize: 6, fontFamily: "Helvetica-Bold", color: BLACK,
     marginLeft: 3,
   },
 
-  // ── Total row ──
+  // ── Subtotal row (gross charges) ──
+  subtotalRow: {
+    flexDirection: "row",
+    padding: "3 12",
+    borderTopWidth: 0.5,
+    borderTopColor: BLACK,
+  },
+  subtotalLabel: { flex: 1, fontSize: 9.5, color: BLACK },
+  subtotalAmount: { width: 70, fontSize: 9.5, color: BLACK, textAlign: "right", fontFamily: "Helvetica-Bold" },
+  subtotalEmpty: { width: 140 },
+
+  // ── Discount row ──
+  discountRow: {
+    flexDirection: "row",
+    padding: "3 12",
+    borderBottomWidth: 0.5,
+    borderBottomColor: BLACK,
+  },
+  discountLabel: { flex: 1, fontSize: 9.5, color: BLACK },
+  discountAmount: { width: 70, fontSize: 9.5, color: BLACK, textAlign: "right", fontFamily: "Helvetica-Bold" },
+
+  // ── Net payable row ──
   totalRow: {
     flexDirection: "row",
-    padding: "3 8",
+    padding: "4 12",
     borderTopWidth: 1.5,
     borderTopColor: BLACK,
   },
-  totalLabel: { flex: 1, fontSize: 10, fontFamily: "Helvetica-Bold", color: BLACK, textTransform: "uppercase" },
-  totalAmount: { width: 85, fontSize: 11, fontFamily: "Helvetica-Bold", color: BLACK, textAlign: "right" },
+  totalLabel: { flex: 1, fontSize: 11, fontFamily: "Helvetica-Bold", color: BLACK, textTransform: "uppercase" },
+  totalAmount: { width: 70, fontSize: 12, fontFamily: "Helvetica-Bold", color: BLACK, textAlign: "right" },
+  totalEmpty: { width: 140 },
+
+  // ── Payment summary rows ──
+  summaryRow: {
+    flexDirection: "row",
+    padding: "3 12",
+    borderBottomWidth: 0.5,
+    borderBottomColor: BLACK,
+  },
+  summaryLabel: { flex: 1, fontSize: 9.5, color: BLACK },
+  summaryAmount: { width: 70, fontSize: 9.5, color: BLACK, textAlign: "right", fontFamily: "Helvetica-Bold" },
+  summaryEmpty: { width: 140 },
+  balanceRow: {
+    flexDirection: "row",
+    padding: "3 12",
+  },
+  balanceLabel: { flex: 1, fontSize: 10, fontFamily: "Helvetica-Bold", color: BLACK },
+  balanceAmount: { width: 70, fontSize: 10, fontFamily: "Helvetica-Bold", color: BLACK, textAlign: "right" },
+  balanceEmpty: { width: 140 },
+
+  // ── Status badge ──
+  statusBadge: {
+    position: "absolute",
+    top: 6,
+    right: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: BLACK,
+  },
+  statusText: { fontSize: 8, fontFamily: "Helvetica-Bold", color: BLACK, textTransform: "uppercase" },
 
   // ── Footer ──
   footer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
-    padding: "3 8",
+    padding: "4 12",
     borderTopWidth: 0.5,
     borderTopColor: BLACK,
   },
   footerLeft: { flex: 1 },
-  footerItem: { fontSize: 7.5, color: BLACK, marginBottom: 0.5 },
+  footerItem: { fontSize: 9, color: BLACK, marginBottom: 0.5 },
   footerLabel: { fontFamily: "Helvetica-Bold", color: BLACK },
-  footerBoldValue: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: BLACK },
+  footerBoldValue: { fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK },
   stampBox: {
-    width: 60, height: 26, borderWidth: 0.5, borderColor: BLACK,
+    width: 70, height: 30, borderWidth: 0.5, borderColor: BLACK,
     justifyContent: "center", alignItems: "center",
   },
-  stampText: { fontSize: 6, color: BLACK, textAlign: "center" },
+  stampText: { fontSize: 7, color: BLACK, textAlign: "center" },
 
   // ── Watermark ──
   watermark: {
@@ -192,7 +243,12 @@ function parseParticulars(p: InvoiceParticular[] | string | undefined): InvoiceP
 
 function InvoiceCard({ invoice, school }: { invoice: FeeInvoice; school: School }) {
   const symbol = school.currency_symbol || "Rs.";
-  const particulars = parseParticulars(invoice.particulars);
+  const allParticulars = parseParticulars(invoice.particulars);
+
+  // Discounts are already applied to charge amounts — no separate discount line items
+  const netPayable = allParticulars.reduce((sum, p) => sum + p.amount, 0);
+  const totalPaid = allParticulars.reduce((sum, p) => sum + (p.paid_amount ?? 0), 0);
+  const totalRemaining = netPayable - totalPaid;
 
   return (
     <View style={s.invoiceCard}>
@@ -269,26 +325,54 @@ function InvoiceCard({ invoice, school }: { invoice: FeeInvoice; school: School 
         </View>
       </View>
 
-      {/* Particulars */}
+      {/* Particulars table — 4 columns: Particular, Charged, Paid, Remaining */}
       <View style={s.table}>
         <View style={s.tableHeader}>
-          <Text style={s.thLabel}>Particulars</Text>
-          <Text style={s.thAmount}>Amount</Text>
+          <Text style={s.thLabel}>Particular</Text>
+          <Text style={s.thNum}>Charged</Text>
+          <Text style={s.thNum}>Paid</Text>
+          <Text style={s.thNum}>Remaining</Text>
         </View>
-        {particulars.map((p, i) => (
-          <View key={i} style={s.tableRow}>
-            <Text style={s.tdLabel}>
-              {p.label}
-            </Text>
-            <Text style={s.tdAmount}>{fmtCurrency(p.amount, symbol)}</Text>
-          </View>
-        ))}
+        {allParticulars.map((p, i) => {
+          const paid = p.paid_amount ?? 0;
+          const remaining = p.amount - paid;
+          return (
+            <View key={i} style={s.tableRow}>
+              <Text style={s.tdLabel}>{p.label}</Text>
+              <Text style={s.tdNum}>{fmtCurrency(p.amount, symbol)}</Text>
+              <Text style={s.tdNumPaid}>{paid > 0 ? fmtCurrency(paid, symbol) : "—"}</Text>
+              <Text style={s.tdNumRem}>{fmtCurrency(remaining, symbol)}</Text>
+            </View>
+          );
+        })}
       </View>
 
-      {/* Total */}
+      {/* Total Payable */}
       <View style={s.totalRow}>
         <Text style={s.totalLabel}>Total Payable</Text>
-        <Text style={s.totalAmount}>{fmtCurrency(invoice.total_amount, symbol)}</Text>
+        <Text style={s.totalEmpty}></Text>
+        <Text style={s.totalAmount}>{fmtCurrency(netPayable, symbol)}</Text>
+      </View>
+
+      {/* Payment summary (only if payment exists) */}
+      {totalPaid > 0 && (
+        <>
+          <View style={s.summaryRow}>
+            <Text style={s.summaryLabel}>Paid in this receipt</Text>
+            <Text style={s.summaryEmpty}></Text>
+            <Text style={s.summaryAmount}>{fmtCurrency(totalPaid, symbol)}</Text>
+          </View>
+          <View style={s.balanceRow}>
+            <Text style={s.balanceLabel}>Remaining Balance</Text>
+            <Text style={s.balanceEmpty}></Text>
+            <Text style={s.balanceAmount}>{fmtCurrency(totalRemaining, symbol)}</Text>
+          </View>
+        </>
+      )}
+
+      {/* Status badge */}
+      <View style={s.statusBadge}>
+        <Text style={s.statusText}>{invoice.status}</Text>
       </View>
 
       {/* Footer */}
@@ -312,7 +396,7 @@ function InvoiceCard({ invoice, school }: { invoice: FeeInvoice; school: School 
   );
 }
 
-// ── Main document: 4 invoices per A4 page (2x2 grid) ──────────────────────────
+// ── Main document: 3 invoices per A4 page (stacked vertically) ───────────────
 
 interface Props {
   invoices: FeeInvoice[];
@@ -320,10 +404,10 @@ interface Props {
 }
 
 export function FeeInvoicePDF({ invoices, school }: Props) {
-  // Group invoices: 4 per page
+  // Group invoices: 3 per page
   const pages: FeeInvoice[][] = [];
-  for (let i = 0; i < invoices.length; i += 4) {
-    pages.push(invoices.slice(i, i + 4));
+  for (let i = 0; i < invoices.length; i += 3) {
+    pages.push(invoices.slice(i, i + 3));
   }
 
   return (

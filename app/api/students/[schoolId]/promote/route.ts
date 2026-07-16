@@ -30,23 +30,48 @@ export async function POST(
 
     const supabase: SupabaseClient = createSupabaseService();
 
-    // Only promote active students
-    const { data, error: dbError } = await supabase
+    // Fetch target class annual_dues
+    const { data: targetClass } = await supabase
+      .from("classes")
+      .select("annual_dues")
+      .eq("id", targetClassId)
+      .single();
+
+    const newClassAnnualDues = (targetClass as Record<string, unknown>)?.annual_dues as number ?? 0;
+
+    // Only promote active students — set previous_annual_due from new class annual_dues minus their discount
+    const { data: students, error: fetchError } = await supabase
       .from("students")
-      .update({ class_id: targetClassId })
+      .select("id, annual_dues_discount")
       .in("id", studentIds)
       .eq("school_id", schoolId)
-      .eq("is_active", true)
-      .select("id, name");
+      .eq("is_active", true);
 
-    if (dbError) {
+    if (fetchError) {
       return NextResponse.json(
-        error(`Failed to promote students: ${dbError.message}`),
+        error(`Failed to fetch students: ${fetchError.message}`),
         { status: 500 }
       );
     }
 
-    const promoted = (data ?? []) as { id: string; name: string }[];
+    const activeStudents = (students ?? []) as { id: string; annual_dues_discount: number }[];
+
+    // Update each student's class_id and previous_annual_due
+    const promoted: { id: string; name: string }[] = [];
+    for (const student of activeStudents) {
+      const newAnnualDue = Math.max(0, newClassAnnualDues - (student.annual_dues_discount ?? 0));
+      const { data: updated, error: updateError } = await supabase
+        .from("students")
+        .update({ class_id: targetClassId, previous_annual_due: newAnnualDue, annual_dues_original: newAnnualDue })
+        .eq("id", student.id)
+        .eq("school_id", schoolId)
+        .select("id, name")
+        .single();
+
+      if (!updateError && updated) {
+        promoted.push(updated as { id: string; name: string });
+      }
+    }
 
     return NextResponse.json(
       success({
