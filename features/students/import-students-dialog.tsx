@@ -48,15 +48,7 @@ const COLUMN_GUIDE: { header: string; desc: string }[] = [
   { header: "annual_dues_discount", desc: "number" },
   { header: "previous_annual_due", desc: "number" },
   { header: "is_free", desc: "0=no, 1=yes" },
-  { header: "is_orphan", desc: "0=no, 1=yes" },
-  { header: "is_osc", desc: "0=no, 1=yes" },
-  { header: "religion", desc: "defaults to Islam" },
-  { header: "blood_group", desc: "e.g. O+, A-, B+" },
-  { header: "identification_mark", desc: "text" },
-  { header: "disease", desc: "text" },
   { header: "birth_form_id", desc: "text" },
-  { header: "family", desc: "text" },
-  { header: "total_siblings", desc: "integer" },
   { header: "address", desc: "text" },
   { header: "father_name", desc: "text" },
   { header: "father_nic", desc: "text" },
@@ -76,15 +68,7 @@ const SAMPLE_CSV_HEADERS = [
   "annual_dues_discount",
   "previous_annual_due",
   "is_free",
-  "is_orphan",
-  "is_osc",
-  "religion",
-  "blood_group",
-  "identification_mark",
-  "disease",
   "birth_form_id",
-  "family",
-  "total_siblings",
   "address",
   "father_name",
   "father_nic",
@@ -103,16 +87,7 @@ const SAMPLE_ROW = [
   "500",
   "0",
   "0",
-  "0",
-  "0",
-  "0",
-  "Islam",
-  "O+",
-  "Scar on left arm",
-  "",
   "BF-12345",
-  "Family A",
-  "2",
   "House 12, Street 5, Lahore",
   "Muhammad Ali",
   "3520212345678",
@@ -438,14 +413,11 @@ export function ImportStudentsDialog({ open, onClose, schoolId }: ImportDialogPr
                   <div><span className="font-medium text-foreground">date_of_birth</span> — YYYY-MM-DD</div>
                   <div><span className="font-medium text-foreground">gender</span> — 0=male, 1=female</div>
                   <div><span className="font-medium text-foreground">is_free</span> — 0=no, 1=yes</div>
-                  <div><span className="font-medium text-foreground">is_orphan</span> — 0=no, 1=yes</div>
-                  <div><span className="font-medium text-foreground">is_osc</span> — 0=no, 1=yes</div>
+                  <div><span className="font-medium text-foreground">birth_form_id</span> — text</div>
                   <div><span className="font-medium text-foreground">previous_balance</span> — number</div>
                   <div><span className="font-medium text-foreground">annual_dues_discount</span> — number</div>
                   <div><span className="font-medium text-foreground">previous_annual_due</span> — number</div>
                   <div><span className="font-medium text-foreground">discount</span> — number</div>
-                  <div><span className="font-medium text-foreground">religion</span> — defaults to Islam</div>
-                  <div><span className="font-medium text-foreground">total_siblings</span> — integer</div>
                   <div><span className="font-medium text-foreground">registration_no</span> — number, STU- auto-added</div>
                 </div>
               </div>

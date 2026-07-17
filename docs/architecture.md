@@ -55,6 +55,7 @@ A single Next.js 15 (App Router) application that hosts:
                   │   - student_attachments    │
                   │   - fee_particulars        │
                   │   - fee_invoices           │
+                  │   - fee_payments           │
                   │   - RLS enabled            │
                   │   - Storage (logos, photos) │
                   └────────────────────────────┘
@@ -85,7 +86,10 @@ A single Next.js 15 (App Router) application that hosts:
   - `settingsService.updateInstituteProfile(schoolId, payload)`
   - `employeeService.getEmployees(schoolId)` / `createEmployee` (auto-generates EMP-YYYY-NNNN from date_of_joining) / `updateEmployee` / `deleteEmployee`
   - `feeService.getFeeParticulars(schoolId)` / `createFeeParticular` / `updateFeeParticular` / `deleteFeeParticular`
-  - `feeInvoiceService.generateInvoices(schoolId, payload)` (auto-generates INV-MM_YYYY_NNNN, filters FINE, bakes discounts directly into charge amounts — no separate discount line items, reads annual due from student.previous_annual_due running balance; supports `custom_particulars` for student-wise Edit & Generate mode — uses edited amounts directly, separates FINE into `fine_after_due`, applies discounts to charge amounts, adds `add_to_balance` items to `student.previous_balance` after generation) / `getInvoices` / `getInvoicesByIds` / `getInvoicesByClassAndMonth` / `getInvoicesByMonth` / `deleteInvoice` / `collectFee(schoolId, payload)` (records payment, updates invoice status/paid_amount, reduces student.previous_balance by amount paid toward PREVIOUS BALANCE particular + adds unpaid non-carried charges, adjusts previous_annual_due for partial annual due payments) / `deletePayment(schoolId, paymentId)` (reverses payment: restores invoice particulars, reverses previous_balance and previous_annual_due changes) / `getPaymentHistory(schoolId, invoiceId)` / `payAnnualDue(schoolId, studentId, amount)`
+  - `feeInvoiceService.generateInvoices(schoolId, payload)` (auto-generates INV-MM_YYYY_NNNN, filters FINE, bakes discounts directly into charge amounts — no separate discount line items, reads annual due from student.previous_annual_due running balance; supports `custom_particulars` for student-wise Edit & Generate mode — uses edited amounts directly, separates FINE into `fine_after_due`, applies discounts to charge amounts, adds `add_to_balance` items to `student.previous_balance` after generation) / `getInvoices` / `getInvoicesByIds` / `getInvoicesByClassAndMonth` / `getInvoicesByMonth` / `deleteInvoice`
+  - `feePaymentService.collectFee(schoolId, payload)` (records payment, updates invoice status/paid_amount, reduces student.previous_balance by amount paid toward PREVIOUS BALANCE particular + adds unpaid non-carried charges, adjusts previous_annual_due for partial annual due payments; zero-amount particulars treated as settled) / `deletePayment(schoolId, paymentId)` (reverses payment: restores invoice particulars, reverses previous_balance and previous_annual_due changes) / `getPaymentHistory(schoolId, invoiceId)` / `payAnnualDue(schoolId, studentId, amount)`
+  - `feeDefaultersService.getFeeDefaulters(schoolId, params)` (unpaid/partial invoices with search, class, month, statusFilter params)
+  - `feeReportService.getFeeReport(schoolId, feeMonth)` (summary + per-class breakdown with estimated/collected/remaining/collectionRate)
 - Errors thrown as `AppError` subclasses; the API layer converts them to JSON responses.
 
 ### 4. Data Layer (`lib/supabase`)
@@ -270,7 +274,7 @@ All list views and search-driven features follow the same pattern:
 | `student-form.tsx` | Add/edit student form (RHF + Zod) |
 | `student-management.tsx` | Main student page — card grid, filters, dialogs |
 | `student-directory-tab.tsx` | Basic List tab — paginated table with Excel export (styled) |
-| `import-students-dialog.tsx` | Excel bulk import dialog — class select, .xlsx file upload, styled sample Excel template (2 sheets: Students + Instructions) |
+| `import-students-dialog.tsx` | Excel bulk import dialog — class select, .xlsx file upload, styled sample Excel template (2 sheets: Students + Instructions); sample columns: name, registration_no, date_of_admission, date_of_birth, gender, mobile, discount, previous_balance, annual_dues_discount, previous_annual_due, is_free, birth_form_id, address, father_name, father_nic, father_profession, additional_note; removed fields auto-defaulted on import (is_orphan=false, is_osc=false, religion="Islam", blood_group=null, identification_mark=null, disease=null, family=null, total_siblings=0) |
 | `admission-letter-tab.tsx` | Admission letter generation tab (SearchPicker → PDF viewer) |
 | `admission-letter-pdf.tsx` | `@react-pdf/renderer` Admission Letter document |
 | `admission-letter-pdf-viewer.tsx` | Client-side `PDFViewer` wrapper |
@@ -290,5 +294,5 @@ All list views and search-driven features follow the same pattern:
 | `fee-invoice-pdf-viewer.tsx` | Client-side `PDFViewer` wrapper for fee invoices |
 | `collect-fees-tab.tsx` | Collect fees — search invoices by name/reg no/father CNIC/mobile/invoice no + month filter (defaults to current month), per-particular payment breakdown with allocation inputs, Allocate Full / Clear buttons, payment note, print invoice prompt after successful payment |
 | `invoice-search-tab.tsx` | Search invoices — debounced search by name/reg no/father CNIC/mobile, month filter, preview/download PDF per invoice or bulk, delete invoice |
-| `fee-defaulters-tab.tsx` | Fee defaulters — summary cards (total defaulters, outstanding amount), month filter (defaults to current month), class filter, debounced search, paginated table with invoice/student/remaining details, print list button (opens print-optimized HTML) |
+| `fee-defaulters-tab.tsx` | Fee defaulters — summary cards (total defaulters, outstanding amount), month filter (defaults to current month), class filter, status filter (Not Paid / Partial / All, defaults to Not Paid), debounced search, paginated table with invoice/student/remaining details, print list button (opens print-optimized HTML) |
 | `fee-report-tab.tsx` | Fee report — 4 summary cards (estimated, collected, remaining, collection rate), month filter (defaults to current month), CSS bar chart showing collection by class (estimated vs collected), class breakdown table with search + totals row, print report (print-optimized HTML), Excel export (xlsx-js-style) |

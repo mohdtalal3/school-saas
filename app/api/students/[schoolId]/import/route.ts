@@ -96,12 +96,6 @@ function parseNumber(val: string | undefined): number {
   return isNaN(n) ? 0 : n;
 }
 
-function parseInt(val: string | undefined): number {
-  if (!val) return 0;
-  const n = Number.parseInt(val, 10);
-  return isNaN(n) ? 0 : n;
-}
-
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ schoolId: string }> }
@@ -172,20 +166,20 @@ export async function POST(
         mobile: formatPhone(getVal(row, "mobile", "phone")) ?? null,
         date_of_birth: parseDate(getVal(row, "date_of_birth", "dob")) ?? null,
         gender: parseGender(getVal(row, "gender")),
-        identification_mark: getVal(row, "identification_mark") ?? null,
-        blood_group: getVal(row, "blood_group") ?? null,
-        disease: getVal(row, "disease") ?? null,
+        identification_mark: null,
+        blood_group: null,
+        disease: null,
         birth_form_id: getVal(row, "birth_form_id") ?? null,
         additional_note: getVal(row, "additional_note") ?? null,
-        is_orphan: parseBool(getVal(row, "is_orphan", "orphan")),
-        is_osc: parseBool(getVal(row, "is_osc", "osc")),
+        is_orphan: false,
+        is_osc: false,
         is_free: parseBool(getVal(row, "is_free", "free")),
         previous_balance: parseNumber(getVal(row, "previous_balance", "prev_balance")),
         annual_dues_discount: parseNumber(getVal(row, "annual_dues_discount")),
         previous_annual_due: parseNumber(getVal(row, "previous_annual_due")),
-        religion: getVal(row, "religion") ?? "Islam",
-        family: getVal(row, "family") ?? null,
-        total_siblings: parseInt(getVal(row, "total_siblings", "siblings")),
+        religion: "Islam",
+        family: null,
+        total_siblings: 0,
         address: getVal(row, "address") ?? null,
         father_name: getVal(row, "father_name") ?? null,
         father_nic: getVal(row, "father_nic", "father_cnic") ?? null,
