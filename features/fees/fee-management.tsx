@@ -7,6 +7,8 @@ import { FeeParticularsTab } from "./fee-particulars-tab";
 import { FeeInvoiceGeneratorTab } from "./fee-invoice-generator-tab";
 import { CollectFeesTab } from "./collect-fees-tab";
 import { InvoiceSearchTab } from "./invoice-search-tab";
+import { FeeDefaultersTab } from "./fee-defaulters-tab";
+import { FeeReportTab } from "./fee-report-tab";
 
 interface FeeManagementProps {
   schoolId: string;
@@ -41,6 +43,16 @@ export function FeeManagement({ schoolId }: FeeManagementProps) {
       {/* Collect Fees tab */}
       {feeTab === "collect" && (
         <CollectFeesTab schoolId={schoolId} />
+      )}
+
+      {/* Fee Defaulters tab */}
+      {feeTab === "defaulters" && (
+        <FeeDefaultersTab schoolId={schoolId} />
+      )}
+
+      {/* Fee Report tab */}
+      {feeTab === "report" && (
+        <FeeReportTab schoolId={schoolId} />
       )}
     </motion.div>
   );

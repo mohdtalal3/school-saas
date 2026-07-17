@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSchoolSession } from "@/lib/auth/jwt";
 import { success, error } from "@/lib/api-response";
-import { payAnnualDue } from "@/services/fee-invoice.service";
+import { payAnnualDue } from "@/services/fee-payment.service";
 
 const PayAnnualDueSchema = z.object({
   student_id: z.string().min(1, "Student ID is required"),

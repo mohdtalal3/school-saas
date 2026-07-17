@@ -29,6 +29,8 @@ import {
   HandCoins,
   Receipt,
   Search,
+  AlertTriangle,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -71,6 +73,8 @@ const feeSubItems: SidebarSubItem[] = [
   { label: "Invoice Generator", icon: FileText, tab: "invoices" },
   { label: "Search Invoices", icon: Search, tab: "search" },
   { label: "Collect Fees", icon: HandCoins, tab: "collect" },
+  { label: "Fee Defaulters", icon: AlertTriangle, tab: "defaulters" },
+  { label: "Fee Report", icon: BarChart3, tab: "report" },
 ];
 
 const employeeSubItems: SidebarSubItem[] = [

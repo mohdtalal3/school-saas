@@ -128,7 +128,7 @@ npm run dev          # http://localhost:3000
 | `/school/classes` | Classes management — card grid, create/edit/delete, boys/girls counts, progress bar |
 | `/school/students` | Student management — tabs: All Students, Basic List, Admission Letter, Attachments, Family, Promote, ID Cards |
 | `/school/students/admission-letter/[studentId]` | Admission letter PDF viewer (full-screen) |
-| `/school/fees` | Fee management — tabs: Fee Particulars, Invoice Generator, Collect Fees, Search Invoices |
+| `/school/fees` | Fee management — tabs: Fee Particulars, Invoice Generator, Collect Fees, Search Invoices, Fee Defaulters, Fee Report |
 | `/master-login` | **Hidden** — type URL directly. Master super-admin login (creates/manages schools). Not linked anywhere in the UI. |
 | `/master` | Master dashboard |
 | `/master/create-school` | Create school + first admin |
@@ -279,7 +279,9 @@ fees/
 ├── fee-invoice-pdf.tsx             @react-pdf/renderer fee invoice PDF — 3 per A4 page (stacked vertically), black & white, discounts baked into charge amounts
 ├── fee-invoice-pdf-viewer.tsx      Client-side PDFViewer wrapper for fee invoices
 ├── collect-fees-tab.tsx            Collect fees — search + month filter (defaults to current month), per-particular payment allocation, Allocate Full/Clear, print invoice prompt after payment
-└── invoice-search-tab.tsx          Search invoices — debounced search, month filter, preview/download PDF, delete invoice
+├── invoice-search-tab.tsx          Search invoices — debounced search, month filter, preview/download PDF, delete invoice
+├── fee-defaulters-tab.tsx          Fee defaulters — summary cards, month filter (defaults to current month), class filter, search, paginated table, print list
+└── fee-report-tab.tsx              Fee report — 4 summary cards, month filter, CSS bar chart by class, class breakdown table with search, print + Excel export
 
 lib/
 ├── env.ts                    Zod-validated env access
@@ -298,7 +300,10 @@ services/                     (business logic; no JSX)
                                 getStudentAttachments, uploadStudentAttachment, deleteStudentAttachment,
                                 uploadStudentPhoto, importStudents, getFamilies, promoteStudents
 └── fee.service.ts            getFeeParticulars (auto-seeds defaults), createFeeParticular, updateFeeParticular, deleteFeeParticular
-└── fee-invoice.service.ts    generateInvoices (class/student/all-classes, duplicate prevention, fine from particulars, discounts baked into charge amounts), getInvoices (search by name/reg no/father_nic/mobile), getInvoicesByIds, getInvoicesByClassAndMonth, getInvoicesByMonth, deleteInvoice, collectFee (per-particular payments, previous_balance reduction + carry-forward, annual_due reduction), deletePayment (reverses all balance changes), getPaymentHistory, payAnnualDue
+└── fee-invoice.service.ts    generateInvoices (class/student/all-classes, duplicate prevention, fine from particulars, discounts baked into charge amounts), getInvoices (search by name/reg no/father_nic/mobile), getInvoicesByIds, getInvoicesByClassAndMonth, getInvoicesByMonth, deleteInvoice
+└── fee-payment.service.ts    collectFee (per-particular payments, previous_balance reduction + carry-forward, annual_due reduction), deletePayment (reverses all balance changes), getPaymentHistory, payAnnualDue
+└── fee-defaulters.service.ts getFeeDefaulters (unpaid/partial invoices with search, class, month filters)
+└── fee-report.service.ts     getFeeReport (summary + per-class breakdown with estimated/collected/remaining/collectionRate)
 
 types/
 ├── school.types.ts           School, SchoolAdmin, Employee, NewEmployee, UpdateEmployee, NewSchool, UpdateSchool,

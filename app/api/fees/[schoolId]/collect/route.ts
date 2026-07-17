@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSchoolSession } from "@/lib/auth/jwt";
-import { collectFee, getPaymentHistory, deletePayment } from "@/services/fee-invoice.service";
+import { collectFee, getPaymentHistory, deletePayment } from "@/services/fee-payment.service";
 import { success, error } from "@/lib/api-response";
 
 const CollectSchema = z.object({
