@@ -36,6 +36,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { SearchPicker } from "@/components/ui/search-picker";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/components/ui/toast";
 import type { FeeInvoice, FeeParticular, SchoolClass, CustomParticular } from "@/types/school.types";
 
@@ -534,18 +535,17 @@ export function FeeInvoiceGeneratorTab({ schoolId }: FeeInvoiceGeneratorTabProps
             {mode === "class" && (
               <div className="space-y-1.5">
                 <Label>Select Class</Label>
-                <Select value={classId} onValueChange={setClassId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a class..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {classes?.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name} (Fee: {c.fee.toLocaleString()})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={classId}
+                  onChange={setClassId}
+                  options={(classes ?? []).map((classItem) => ({
+                    value: classItem.id,
+                    label: classItem.name,
+                    subtitle: `Fee: ${classItem.fee.toLocaleString()}`,
+                  }))}
+                  placeholder="Choose a class..."
+                  searchPlaceholder="Search classes..."
+                />
               </div>
             )}
 

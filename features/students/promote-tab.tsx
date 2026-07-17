@@ -16,13 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Pagination } from "@/components/ui/pagination";
 import { useServerPagination } from "@/lib/use-server-pagination";
 import { useToast } from "@/components/ui/toast";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import type { StudentWithClass, SchoolClass } from "@/types/school.types";
 
 async function fetchActiveStudents(
@@ -188,26 +182,21 @@ export function PromoteTab({ schoolId }: PromoteTabProps) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           {/* Class filter (source) */}
-          <Select
+          <SearchableSelect
+            className="w-full sm:w-44"
             value={classFilter}
-            onValueChange={(v) => {
-              setClassFilter(v);
+            onChange={(value) => {
+              setClassFilter(value);
               setPage(1);
               setSelectedIds(new Set());
             }}
-          >
-            <SelectTrigger className="w-full sm:w-44">
-              <SelectValue placeholder="Filter by class" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Classes</SelectItem>
-              {safeClasses.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            options={[
+              { value: "all", label: "All Classes" },
+              ...safeClasses.map((classItem) => ({ value: classItem.id, label: classItem.name })),
+            ]}
+            placeholder="Filter by class"
+            searchPlaceholder="Search classes..."
+          />
 
           {/* Search */}
           <div className="relative w-full sm:w-64">
@@ -237,18 +226,14 @@ export function PromoteTab({ schoolId }: PromoteTabProps) {
           <span className="text-xs text-muted-foreground">
             {selectedIds.size} selected
           </span>
-          <Select value={targetClassId} onValueChange={setTargetClassId}>
-            <SelectTrigger className="w-full sm:w-48">
-              <SelectValue placeholder="Promote to class..." />
-            </SelectTrigger>
-            <SelectContent>
-              {safeClasses.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            className="w-full sm:w-48"
+            value={targetClassId}
+            onChange={setTargetClassId}
+            options={safeClasses.map((classItem) => ({ value: classItem.id, label: classItem.name }))}
+            placeholder="Promote to class..."
+            searchPlaceholder="Search classes..."
+          />
           <Button
             onClick={() => promoteMutation.mutate()}
             disabled={

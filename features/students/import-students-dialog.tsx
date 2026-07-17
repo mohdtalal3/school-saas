@@ -20,13 +20,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/components/ui/toast";
 import type { SchoolClass } from "@/types/school.types";
 
@@ -322,18 +316,13 @@ export function ImportStudentsDialog({ open, onClose, schoolId }: ImportDialogPr
               {/* Class selection */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Select Class</label>
-                <Select value={selectedClass} onValueChange={setSelectedClass}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Choose a class for imported students" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {classes.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={selectedClass}
+                  onChange={setSelectedClass}
+                  options={classes.map((classItem) => ({ value: classItem.id, label: classItem.name }))}
+                  placeholder="Choose a class for imported students"
+                  searchPlaceholder="Search classes..."
+                />
               </div>
 
               {/* Download sample */}

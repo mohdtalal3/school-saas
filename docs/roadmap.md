@@ -76,9 +76,20 @@
 - ✅ Class fields: name, monthly fee, annual dues, class teacher, capacity
 - ✅ Empty state prompts to create first class
 - ⏳ Sections CRUD (assign section teachers)
-- ⏳ Assign subjects to classes
+- ✅ Subject catalog (default subjects, add/edit/delete)
+- ✅ Assign subjects to classes with configurable total marks
+- ✅ Searchable multi-select duplication of class subject assignments to multiple classes
 
-### 2.6 Students (IN PROGRESS)
+### 2.6 Timetable (COMPLETE)
+
+- ✅ Configurable weekday catalog with weekend marking
+- ✅ Assign weekdays to classes and duplicate a class schedule to multiple searched classes
+- ✅ Class/day-specific time periods with shared-day creation, edit/delete, and multi-class duplication
+- ✅ Timetable grid with break, assigned subject, active employee/teacher, and multi-weekday application
+- ✅ Weekend-safe bulk application (weekends are excluded)
+- ✅ Read-only timetable preview by searched class or teacher
+
+### 2.7 Students (IN PROGRESS)
 
 - ✅ Student CRUD (create, list, edit, delete, view) — card grid view with photo, class, fee
 - ✅ Student fields: name, photo, registration no (auto STU-YYYY-NNNN, year from date_of_admission, resets per year), date of admission, class dropdown, discount, mobile, DOB, gender, identification mark, blood group, disease, birth form ID, additional note, orphan, OSC, is_free, previous_balance, annual_dues_discount, previous_annual_due (auto-calculated from class.annual_dues - annual_dues_discount on creation), religion, family, total siblings, address, father info
@@ -94,34 +105,35 @@
 - ✅ Family grouping (auto-group by father CNIC, search, expandable cards)
 - ✅ Promote students (bulk promote to target class, only active students, search & select)
 - ✅ Student ID Cards (Puppeteer PDF, CR80 portrait, All mode with class multi-select / Select mode with server-side search by name & reg no, theme customization, iframe preview)
+- ✅ Shared searchable class selection across student forms, filters, imports, promotion, ID cards, fee screens, directories, subjects, and timetable (10 initial results + Show more; All/No Class semantics retained)
 - ✅ Admission Letter (`@react-pdf/renderer`, SearchPicker → full-screen PDF viewer)
 - ✅ Tab-based UI via URL `?tab=` (All, Basic List, Admission Letter, Attachments, Family, Promote, ID Cards)
 - ⏳ Parent linkage
 - ⏳ Assign to section
 
-### 2.7 Teachers (PENDING)
+### 2.8 Teachers (PENDING)
 
 - Teacher CRUD.
 - Assign subjects to teachers.
 
-### 2.8 Parents (PENDING)
+### 2.9 Parents (PENDING)
 
 - Parent CRUD.
 - Link to students.
 
-### 2.9 Attendance (PENDING)
+### 2.10 Attendance (PENDING)
 
 - Daily attendance (per class/section).
 - Calendar view.
 - Reports (class-wise, student-wise).
 
-### 2.10 Exams & Grades (PENDING)
+### 2.11 Exams & Grades (PENDING)
 
 - Exam definition + grading.
 - Mark entry.
 - Report cards.
 
-### 2.11 Fees (IN PROGRESS)
+### 2.12 Fees (IN PROGRESS)
 
 - ✅ Fee Particulars — configurable fee line items per school (8 defaults seeded: 5 fixed auto-resolved from class/student data, 3 custom with user-set amounts), add/edit/delete custom particulars, tab-based UI via URL `?tab=particulars`
 - ✅ Invoice Generator — generate fee invoices class-wise, student-wise, or all-classes at once; auto-sequential invoice numbers (INV-MM_YYYY_NNNN, resets per month), particulars resolved from fee particulars config with discounts baked into charge amounts, PDF generation via `@react-pdf/renderer` (3 invoices per A4 page stacked vertically, black & white), search/filter/delete invoices, month filter defaults to current month, unique invoice_no for cross-module reference

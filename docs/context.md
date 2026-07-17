@@ -31,6 +31,9 @@ Built and working:
 - **Fee Defaulters** — list students with unpaid/partial invoices; summary cards (total defaulters, outstanding amount); month filter (defaults to current month), class filter, **status filter** (Not Paid / Partial / All Status, defaults to Not Paid), debounced search (name, reg no, father CNIC, mobile, invoice no); paginated table with invoice/student/remaining details; print list button (opens print-optimized HTML in new tab); API at `GET /api/fees/[schoolId]/defaulters?statusFilter=unpaid|partial`
 - **Fee Report** — 4 summary cards (total estimated after discount, total collected, total remaining, collection rate); month filter (defaults to current month); CSS bar chart showing collection by class (estimated vs collected overlay); class breakdown table (Class, Students, Estimated, Collected, Remaining, Collection Rate) with search + totals footer row; print report (print-optimized HTML in new tab); Excel export (xlsx-js-style with styled headers + totals row); API at `GET /api/fees/[schoolId]/report?feeMonth=YYYY-MM`
 - **Fee service modularization** — `fee-invoice.service.ts` split into 4 files: `fee-invoice.service.ts` (generation + invoice queries), `fee-payment.service.ts` (collectFee, deletePayment, getPaymentHistory, payAnnualDue), `fee-defaulters.service.ts` (getFeeDefaulters), `fee-report.service.ts` (getFeeReport)
+- **Subjects** — default catalog seeded on first access, custom add/edit/delete, per-class total marks, assignment view/edit/delete, and searchable multi-class duplication
+- **Timetable** — configurable weekdays/weekends, searchable multi-class weekday/period duplication, an editable timetable grid supporting breaks, subjects, active employee teachers, apply-to-weekdays, and read-only preview by class or teacher
+- **Reusable class selectors** — class pickers across Subjects, Timetable, Students, Fees, promotion/import flows, ID-card filters, and shared directories are searchable, initially show 10 results, and reveal more in batches; existing All Classes, No Class, and intentional multi-class behavior is preserved
 
 Not yet built (Phase 2/3):
 - Teacher / Parent / Student portals (role cards exist in the login UI but show a "coming soon" toast)
@@ -131,6 +134,8 @@ npm run dev          # http://localhost:3000
 | `/school/students` | Student management — tabs: All Students, Basic List, Admission Letter, Attachments, Family, Promote, ID Cards |
 | `/school/students/admission-letter/[studentId]` | Admission letter PDF viewer (full-screen) |
 | `/school/fees` | Fee management — tabs: Fee Particulars, Invoice Generator, Collect Fees, Search Invoices, Fee Defaulters, Fee Report |
+| `/school/subjects` | Subject management — tabs: Create Subjects, Assign Subjects |
+| `/school/timetable` | Timetable management — tabs: Weekdays, Time Periods, Create Timetable, Preview Timetable |
 | `/master-login` | **Hidden** — type URL directly. Master super-admin login (creates/manages schools). Not linked anywhere in the UI. |
 | `/master` | Master dashboard |
 | `/master/create-school` | Create school + first admin |
@@ -306,6 +311,8 @@ services/                     (business logic; no JSX)
 └── fee-payment.service.ts    collectFee (per-particular payments, previous_balance reduction + carry-forward, annual_due reduction), deletePayment (reverses all balance changes), getPaymentHistory, payAnnualDue
 └── fee-defaulters.service.ts getFeeDefaulters (unpaid/partial invoices with search, class, month filters)
 └── fee-report.service.ts     getFeeReport (summary + per-class breakdown with estimated/collected/remaining/collectionRate)
+├── subject.service.ts        Subject defaults/catalog + class assignments and duplication
+└── timetable.service.ts      Weekdays, class days, periods, timetable entries, duplication
 
 types/
 ├── school.types.ts           School, SchoolAdmin, Employee, NewEmployee, UpdateEmployee, NewSchool, UpdateSchool,
@@ -332,7 +339,9 @@ supabase/
     ├── 0015_invoice_pdf_enhancements.sql   waived_amount column on fee_invoices
     ├── 0016_collect_fee_allocations.sql    per-particular payment allocations
     ├── 0017_per_particular_payments.sql    per-particular payment tracking in JSONB particulars
-    └── 0018_annual_dues_tracking.sql       annual_dues_original column on students (reversal cap)
+    ├── 0018_annual_dues_tracking.sql       annual_dues_original column on students (reversal cap)
+    ├── 0019_subjects_and_timetable.sql     subject catalog/assignments + weekdays/periods/timetable
+    └── 0020_class_subject_total_marks.sql  compatibility conversion to total_marks
 ```
 
 ---
@@ -468,7 +477,7 @@ Bucket `student-photos` — for student profile photos.
 Bucket `student-attachments` — for student documents (birth cert, CNIC, results, etc.).
 
 ### Reserved (schema-ready, not built)
-teachers, parents, sections, subjects, attendance, exams, grades, invoices, payments, subscriptions, plans — all FK-linked to `school_id`.
+teachers, parents, sections, attendance, exams, grades, subscriptions, plans — all FK-linked to `school_id`.
 
 See `docs/database.md` for full DDL and `docs/roadmap.md` for the build order.
 
@@ -649,7 +658,7 @@ See `docs/architecture.md` §Search Pattern Consistency and §Page Container & L
 ## 16. What to build next (Phase 2 priorities)
 
 1. **Verify migrations applied**, then do a cleanup pass to clear the pre-existing `tsc` errors so `npm run build` passes.
-2. **Sections** CRUD (assign section teachers), then **Teachers**, **Parents**.
+2. **Sections** CRUD (assign section teachers), then dedicated **Teachers** and **Parents**. Timetable currently selects teachers from active employees.
 3. **Attendance** (daily, per class/section), **Exams & Grades** (mark entry, report cards), **Fees** (structure, invoices, payments).
 4. Then Phase 3: subscriptions/billing (Stripe), role portals, notifications, reports.
 

@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/toast";
+import { SearchableMultiSelect } from "@/components/ui/searchable-multi-select";
 import { useQuery } from "@tanstack/react-query";
 import type { IdCardTheme } from "@/features/employees/id-card-types";
 import type { StudentWithClass, SchoolClass } from "@/types/school.types";
@@ -112,15 +113,6 @@ export function StudentIdCardsTab({ schoolId }: StudentIdCardsTabProps) {
 
   function clearAll() {
     setSelectedMap(new Map());
-  }
-
-  function toggleClass(clsId: string) {
-    setSelectedClassIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(clsId)) next.delete(clsId);
-      else next.add(clsId);
-      return next;
-    });
   }
 
   const pdfQuery = React.useMemo(() => {
@@ -246,25 +238,13 @@ export function StudentIdCardsTab({ schoolId }: StudentIdCardsTabProps) {
                   <p className="text-xs text-muted-foreground">
                     Select classes to print ID cards for, or leave empty to print all.
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    {safeClasses.map((cls) => {
-                      const checked = selectedClassIds.has(cls.id);
-                      return (
-                        <button
-                          key={cls.id}
-                          onClick={() => toggleClass(cls.id)}
-                          className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
-                            checked
-                              ? "border-primary bg-primary/5 text-primary"
-                              : "border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground"
-                          }`}
-                        >
-                          {checked && <Check className="h-3 w-3" />}
-                          {cls.name}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <SearchableMultiSelect
+                    value={Array.from(selectedClassIds)}
+                    onChange={(values) => setSelectedClassIds(new Set(values))}
+                    options={safeClasses.map((classItem) => ({ value: classItem.id, label: classItem.name }))}
+                    placeholder="Filter by classes (optional)"
+                    searchPlaceholder="Search classes..."
+                  />
                   {safeClasses.length === 0 && (
                     <div className="flex items-center gap-2 rounded-md border bg-muted/20 p-3 text-xs text-muted-foreground">
                       <GraduationCap className="h-4 w-4" />

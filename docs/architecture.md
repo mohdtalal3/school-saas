@@ -56,6 +56,8 @@ A single Next.js 15 (App Router) application that hosts:
                   │   - fee_particulars        │
                   │   - fee_invoices           │
                   │   - fee_payments           │
+                  │   - subjects/class_subjects│
+                  │   - timetable configuration│
                   │   - RLS enabled            │
                   │   - Storage (logos, photos) │
                   └────────────────────────────┘
@@ -90,6 +92,8 @@ A single Next.js 15 (App Router) application that hosts:
   - `feePaymentService.collectFee(schoolId, payload)` (records payment, updates invoice status/paid_amount, reduces student.previous_balance by amount paid toward PREVIOUS BALANCE particular + adds unpaid non-carried charges, adjusts previous_annual_due for partial annual due payments; zero-amount particulars treated as settled) / `deletePayment(schoolId, paymentId)` (reverses payment: restores invoice particulars, reverses previous_balance and previous_annual_due changes) / `getPaymentHistory(schoolId, invoiceId)` / `payAnnualDue(schoolId, studentId, amount)`
   - `feeDefaultersService.getFeeDefaulters(schoolId, params)` (unpaid/partial invoices with search, class, month, statusFilter params)
   - `feeReportService.getFeeReport(schoolId, feeMonth)` (summary + per-class breakdown with estimated/collected/remaining/collectionRate)
+  - `subject.service.ts` owns subject defaults, catalog CRUD, class subject total marks, and safe class-to-class duplication.
+  - `timetable.service.ts` owns weekdays, class weekday assignments, per-day periods, duplication, and timetable entry validation/upserts.
 - Errors thrown as `AppError` subclasses; the API layer converts them to JSON responses.
 
 ### 4. Data Layer (`lib/supabase`)
@@ -187,6 +191,18 @@ Tabs are no longer managed by local React state. Instead:
 - Sidebar sub-items link to `?tab=<value>`.
 - Content is conditionally rendered based on the tab value.
 - This enables deep-linking, browser back/forward, and bookmarkable views.
+- Subjects use `/school/subjects?tab=create|assign`; Timetable uses `/school/timetable?tab=weekdays|periods|create|preview`.
+
+### Subject and Timetable Model
+
+- `subjects` is a reusable school catalog; `class_subjects` is the class-specific join and stores the positive integer `total_marks` used by exams and grading.
+- `weekdays` is reusable across the school; `class_weekdays` determines which days a class attends.
+- Times belong to `class_periods`, keyed by class + weekday + position, allowing different day/class times without duplicating timetable logic.
+- `timetable_entries` references the configured class period. Multi-day application resolves matching period positions and excludes days marked as weekends.
+- Until dedicated Teacher CRUD exists, the teacher selector uses active employees and stores `employees.id`.
+- `TimetableGrid` is shared by the editable builder and read-only class/teacher previews, allowing later teacher and parent portals to reuse the same visual model.
+- `SearchableMultiSelect` provides searched multi-class targeting for duplication flows and screens that intentionally allow several class filters, such as student ID cards.
+- `SearchableSelect` is the shared single-value class picker across scheduling, students, fees, imports, promotion, and directory filters. Special options such as `All Classes` and `No class` remain screen-owned options rather than hardcoded component behavior. Both searchable select components show 10 options initially and reveal further results in batches of 10.
 
 ### Suspense Boundaries
 

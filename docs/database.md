@@ -293,6 +293,21 @@ CREATE TABLE fee_payments (
   - `student.previous_annual_due` is increased back, capped at `annual_dues_original`.
 - **Annual dues tracking**: `student.previous_annual_due` is a running balance that decreases as payments are allocated to it. `student.annual_dues_original` stores the initial annual dues for the year (set at student creation and promotion), used as a cap when reversing payments.
 
+### `subjects` and `class_subjects`
+
+`subjects` is the tenant subject catalog. It is seeded on first access with English, Urdu, Mathematics, Science, Islamiat, Social Studies, Computer Science, and General Knowledge. Subjects can be soft-deleted; a subject used by a timetable must be removed from that timetable first.
+
+`class_subjects` assigns catalog subjects to classes. Each assignment has a positive integer `total_marks`, representing the maximum marks available for that subject, such as 50, 75, or 100. A subject can only be assigned once to a class; different subjects may use the same total marks.
+
+### Timetable tables
+
+- `weekdays`: school-wide day catalog with `sort_order`, `is_weekend`, and `is_active`.
+- `class_weekdays`: many-to-many assignment of weekdays to classes.
+- `class_periods`: class-and-weekday-specific period label, position, start time, and end time. A class can therefore use different times on different days.
+- `timetable_entries`: one entry per `class_period`. An entry is either a break or references a `class_subject`; it may reference an active employee as the teacher. Break entries cannot have a subject or teacher.
+
+All six subject/timetable tables are scoped by `school_id`, have RLS enabled, and are covered by migration `0019_subjects_and_timetable.sql`.
+
 ---
 
 ## Future-Ready Tables (Schema Reserved)
@@ -304,8 +319,6 @@ These tables are **not yet created** but the foreign key relationships and namin
 | `teachers` | `school_id`, `user_id` | Teacher records |
 | `parents` | `school_id`, `user_id` | Parent/guardian records |
 | `sections` | `school_id`, `class_id` | Class sections |
-| `subjects` | `school_id` | Subject catalog |
-| `class_subjects` | `school_id`, `class_id`, `subject_id` | Which subjects per class |
 | `attendance` | `school_id`, `student_id`, `class_id` | Daily attendance |
 | `exams` | `school_id`, `class_id` | Exam definitions |
 | `grades` | `school_id`, `exam_id`, `student_id` | Exam results |
@@ -378,7 +391,9 @@ supabase/
     ├── 0015_invoice_pdf_enhancements.sql    ✅ Applied — waived_amount column on fee_invoices
     ├── 0016_collect_fee_allocations.sql     ✅ Applied — per-particular payment allocations (paid_amount, status on InvoiceParticular)
     ├── 0017_per_particular_payments.sql     ✅ Applied — per-particular payment tracking in JSONB particulars
-    └── 0018_annual_dues_tracking.sql        ✅ Applied — annual_dues_original column on students (tracks initial annual dues for the year, caps reversal on payment deletion)
+    ├── 0018_annual_dues_tracking.sql        ✅ Applied — annual_dues_original column on students (tracks initial annual dues for the year, caps reversal on payment deletion)
+    ├── 0019_subjects_and_timetable.sql      📝 Written — subjects, class assignments, weekdays, periods, timetable entries; run db:migrate
+    └── 0020_class_subject_total_marks.sql   📝 Written — compatibility rename/conversion from subject_number to total_marks
 ```
 
 Run: `npm run db:migrate`

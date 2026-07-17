@@ -16,6 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Pagination } from "@/components/ui/pagination";
 import { useServerPagination } from "@/lib/use-server-pagination";
 import { useToast } from "@/components/ui/toast";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Select,
   SelectContent,
@@ -265,17 +266,17 @@ export function FeeDefaultersTab({ schoolId }: FeeDefaultersTabProps) {
           </Select>
 
           {/* Class filter */}
-          <Select value={classId} onValueChange={(v) => { setClassId(v); setPage(1); }}>
-            <SelectTrigger className="w-full sm:w-44">
-              <SelectValue placeholder="Filter by class" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Classes</SelectItem>
-              {classes.map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            className="w-full sm:w-44"
+            value={classId}
+            onChange={(value) => { setClassId(value); setPage(1); }}
+            options={[
+              { value: "all", label: "All Classes" },
+              ...classes.map((classItem) => ({ value: classItem.id, label: classItem.name })),
+            ]}
+            placeholder="Filter by class"
+            searchPlaceholder="Search classes..."
+          />
 
           {/* Status filter */}
           <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>

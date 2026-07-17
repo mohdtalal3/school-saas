@@ -15,13 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Pagination } from "@/components/ui/pagination";
 import { useServerPagination } from "@/lib/use-server-pagination";
 import { useToast } from "@/components/ui/toast";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 export interface DirectoryColumn<T> {
   key: string;
@@ -320,17 +314,17 @@ export function DirectoryTable<T extends { id: string; is_active: boolean }>({
 
           {/* Class filter (optional) */}
           {classFilter && (
-            <Select value={classId} onValueChange={(v) => { setClassId(v); setPage(1); }}>
-              <SelectTrigger className="w-full sm:w-44">
-                <SelectValue placeholder="Filter by class" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Classes</SelectItem>
-                {classFilter.classes.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              className="w-full sm:w-44"
+              value={classId}
+              onChange={(value) => { setClassId(value); setPage(1); }}
+              options={[
+                { value: "all", label: "All Classes" },
+                ...classFilter.classes.map((classItem) => ({ value: classItem.id, label: classItem.name })),
+              ]}
+              placeholder="Filter by class"
+              searchPlaceholder="Search classes..."
+            />
           )}
 
           {/* Search */}
@@ -387,20 +381,17 @@ export function DirectoryTable<T extends { id: string; is_active: boolean }>({
           Export all ({total})
         </Button>
         {classFilter && classFilter.classes.length > 0 && (
-          <Select onValueChange={(v) => {
-            const cls = classFilter.classes.find((c) => c.id === v);
-            if (cls) exportByClass(cls.id, cls.name);
-          }}>
-            <SelectTrigger className="w-44 gap-1.5 text-xs">
-              <Download className="h-3.5 w-3.5" />
-              <SelectValue placeholder="Export by class" />
-            </SelectTrigger>
-            <SelectContent>
-              {classFilter.classes.map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            className="w-44 text-xs"
+            value=""
+            onChange={(value) => {
+              const selectedClass = classFilter.classes.find((classItem) => classItem.id === value);
+              if (selectedClass) exportByClass(selectedClass.id, selectedClass.name);
+            }}
+            options={classFilter.classes.map((classItem) => ({ value: classItem.id, label: classItem.name }))}
+            placeholder="Export by class"
+            searchPlaceholder="Search classes..."
+          />
         )}
       </div>
 

@@ -115,6 +115,80 @@ export interface ClassWithStats extends SchoolClass {
   total_students: number;
 }
 
+// ── Subjects & Timetable ─────────────────────────────────────
+
+export interface Subject {
+  id: string;
+  school_id: string;
+  name: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClassSubject {
+  id: string;
+  school_id: string;
+  class_id: string;
+  subject_id: string;
+  total_marks: number;
+  subject?: Subject;
+  class?: Pick<SchoolClass, "id" | "name">;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Weekday {
+  id: string;
+  school_id: string;
+  name: string;
+  sort_order: number;
+  is_weekend: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClassWeekday {
+  id: string;
+  school_id: string;
+  class_id: string;
+  weekday_id: string;
+  weekday?: Weekday;
+  class?: Pick<SchoolClass, "id" | "name">;
+  created_at: string;
+}
+
+export interface ClassPeriod {
+  id: string;
+  school_id: string;
+  class_id: string;
+  weekday_id: string;
+  label: string;
+  position: number;
+  start_time: string;
+  end_time: string;
+  weekday?: Weekday;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TimetableEntry {
+  id: string;
+  school_id: string;
+  class_id: string;
+  class_period_id: string;
+  class_subject_id: string | null;
+  teacher_id: string | null;
+  is_break: boolean;
+  class_subject?: ClassSubject | null;
+  teacher?: Pick<Employee, "id" | "name" | "employee_code" | "role"> | null;
+  class?: Pick<SchoolClass, "id" | "name">;
+  class_period?: ClassPeriod;
+  created_at: string;
+  updated_at: string;
+}
+
 // ── Students ──────────────────────────────────────────────────
 
 export interface Student {

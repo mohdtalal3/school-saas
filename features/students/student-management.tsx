@@ -60,6 +60,7 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SearchPicker } from "@/components/ui/search-picker";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/components/ui/toast";
 import { StudentForm } from "./student-form";
 import { StudentDirectoryTab } from "./student-directory-tab";
@@ -924,17 +925,17 @@ export function StudentManagement({ schoolId }: StudentManagementProps) {
                 </button>
               ))}
             </div>
-            <Select value={classFilter} onValueChange={setClassFilter}>
-              <SelectTrigger className="w-full sm:w-44">
-                <SelectValue placeholder="Filter by class" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Classes</SelectItem>
-                {safeClasses.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              className="w-full sm:w-44"
+              value={classFilter}
+              onChange={(value) => { setClassFilter(value); setPage(1); }}
+              options={[
+                { value: "all", label: "All Classes" },
+                ...safeClasses.map((classItem) => ({ value: classItem.id, label: classItem.name })),
+              ]}
+              placeholder="Filter by class"
+              searchPlaceholder="Search classes..."
+            />
             <button
               onClick={() => { setIsFreeOnly((v) => !v); setPage(1); }}
               className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${

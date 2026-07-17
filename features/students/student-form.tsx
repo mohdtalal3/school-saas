@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Select,
   SelectContent,
@@ -413,26 +414,22 @@ export function StudentForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label>Class</Label>
-          <Select
+          <SearchableSelect
             value={watch("class_id") || "__none__"}
-            onValueChange={(v) =>
-              setValue("class_id", v === "__none__" ? null : v, { shouldDirty: true })
+            onChange={(value) =>
+              setValue("class_id", value === "__none__" ? null : value, { shouldDirty: true })
             }
-          >
-            <SelectTrigger>
-              <SelectValue
-                placeholder={classesLoading ? "Loading..." : "Select class"}
-              />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">— No class —</SelectItem>
-              {classes.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name} (Rs. {c.fee.toLocaleString()})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            options={[
+              { value: "__none__", label: "— No class —" },
+              ...classes.map((classItem) => ({
+                value: classItem.id,
+                label: classItem.name,
+                subtitle: `Rs. ${classItem.fee.toLocaleString()}`,
+              })),
+            ]}
+            placeholder={classesLoading ? "Loading..." : "Select class"}
+            searchPlaceholder="Search classes..."
+          />
         </div>
 
         <div className="space-y-1.5">

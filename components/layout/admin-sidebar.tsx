@@ -31,6 +31,9 @@ import {
   Search,
   AlertTriangle,
   BarChart3,
+  CalendarDays,
+  Clock3,
+  CalendarRange,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -86,6 +89,18 @@ const employeeSubItems: SidebarSubItem[] = [
   { label: "ID Cards", icon: CreditCard, tab: "idcards" },
 ];
 
+const subjectSubItems: SidebarSubItem[] = [
+  { label: "Create Subjects", icon: BookOpen, tab: "create" },
+  { label: "Assign Subjects", icon: Table, tab: "assign" },
+];
+
+const timetableSubItems: SidebarSubItem[] = [
+  { label: "Weekdays", icon: CalendarDays, tab: "weekdays" },
+  { label: "Time Periods", icon: Clock3, tab: "periods" },
+  { label: "Create Timetable", icon: CalendarRange, tab: "create" },
+  { label: "Preview Timetable", icon: Search, tab: "preview" },
+];
+
 interface AdminSidebarProps {
   open: boolean;
   onClose: () => void;
@@ -112,6 +127,8 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
   const [feesOpen, setFeesOpen] = React.useState(
     pathname?.startsWith("/school/fees") ?? false
   );
+  const [subjectsOpen, setSubjectsOpen] = React.useState(pathname?.startsWith("/school/subjects") ?? false);
+  const [timetableOpen, setTimetableOpen] = React.useState(pathname?.startsWith("/school/timetable") ?? false);
 
   React.useEffect(() => {
     // Auto-expand if you navigate into a sub-page elsewhere.
@@ -119,6 +136,8 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
     if (pathname?.startsWith("/school/students")) setStudentsOpen(true);
     if (pathname?.startsWith("/school/employees")) setEmployeesOpen(true);
     if (pathname?.startsWith("/school/fees")) setFeesOpen(true);
+    if (pathname?.startsWith("/school/subjects")) setSubjectsOpen(true);
+    if (pathname?.startsWith("/school/timetable")) setTimetableOpen(true);
   }, [pathname]);
 
   const settingsActive = pathname?.startsWith("/school/settings") ?? false;
@@ -126,6 +145,8 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
   const classesActive = pathname?.startsWith("/school/classes") ?? false;
   const studentsActive = pathname?.startsWith("/school/students") ?? false;
   const feesActive = pathname?.startsWith("/school/fees") ?? false;
+  const subjectsActive = pathname?.startsWith("/school/subjects") ?? false;
+  const timetableActive = pathname?.startsWith("/school/timetable") ?? false;
 
   return (
     <>
@@ -258,6 +279,10 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
               </motion.div>
             )}
           </AnimatePresence>
+
+          <SidebarTabGroup label="Subjects" icon={BookOpen} open={subjectsOpen} setOpen={setSubjectsOpen} active={subjectsActive} currentTab={currentTab} defaultTab="create" href="/school/subjects" items={subjectSubItems} onClose={onClose} />
+
+          <SidebarTabGroup label="Timetable" icon={CalendarRange} open={timetableOpen} setOpen={setTimetableOpen} active={timetableActive} currentTab={currentTab} defaultTab="weekdays" href="/school/timetable" items={timetableSubItems} onClose={onClose} />
 
           {/* Classes */}
           <Link
@@ -474,6 +499,13 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
       </aside>
     </>
   );
+}
+
+function SidebarTabGroup({ label, icon: Icon, open, setOpen, active, currentTab, defaultTab, href, items, onClose }: {
+  label: string; icon: React.ElementType; open: boolean; setOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  active: boolean; currentTab: string | null; defaultTab: string; href: string; items: SidebarSubItem[]; onClose: () => void;
+}) {
+  return <><button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className={cn("group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors", active ? "bg-sidebar-accent text-white" : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white")}><Icon className="h-4 w-4" /><span className="flex-1 text-left">{label}</span><ChevronDown className={cn("h-4 w-4 transition-transform duration-200", open && "rotate-180")} /></button><AnimatePresence initial={false}>{open && <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden"><div className="ml-2 mt-1 space-y-1 border-l border-sidebar-border/60 pb-1 pl-2">{items.map((item) => { const ItemIcon = item.icon; const itemActive = active && (currentTab === item.tab || (!currentTab && item.tab === defaultTab)); return <Link key={item.tab} href={`${href}?tab=${item.tab}`} onClick={onClose} className={cn("group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors", itemActive ? "bg-sidebar-accent text-white" : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white")}><ItemIcon className="h-4 w-4" /><span className="flex-1">{item.label}</span>{itemActive && <ChevronRight className="h-4 w-4" />}</Link>; })}</div></motion.div>}</AnimatePresence></>;
 }
 
 export { type SidebarItem };
