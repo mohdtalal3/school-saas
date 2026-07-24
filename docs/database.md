@@ -301,12 +301,43 @@ CREATE TABLE fee_payments (
 
 ### Timetable tables
 
-- `weekdays`: school-wide day catalog with `sort_order`, `is_weekend`, and `is_active`.
-- `class_weekdays`: many-to-many assignment of weekdays to classes.
+- `weekdays`: school-wide day catalog with `sort_order`, `is_weekend`, and `is_active`; its weekend value is the default for class setup.
+- `class_weekdays`: one row per configured class/day with an explicit `is_weekend` status. This per-class value is authoritative for attendance and timetable behavior, allowing Saturday to be working for one class and off for another.
 - `class_periods`: class-and-weekday-specific period label, position, start time, and end time. A class can therefore use different times on different days.
 - `timetable_entries`: one entry per `class_period`. An entry is either a break or references a `class_subject`; it may reference an active employee as the teacher. Break entries cannot have a subject or teacher.
 
 All six subject/timetable tables are scoped by `school_id`, have RLS enabled, and are covered by migration `0019_subjects_and_timetable.sql`.
+
+### `student_attendance`
+
+Stores finalized daily attendance for a student. A missing row means **Not Marked**; `not_marked` is deliberately not persisted.
+
+```sql
+CREATE TABLE student_attendance (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  school_id       UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  class_id        UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  attendance_date DATE NOT NULL,
+  status          TEXT NOT NULL CHECK (status IN ('present','absent','late','leave')),
+  note            TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (school_id, student_id, attendance_date)
+);
+```
+
+- `class_id` is stored as the class snapshot for that attendance date, so student reports can retain class context after promotion.
+- Tenant and date indexes support daily class registers and student/class range reports.
+- RLS restricts rows to the JWT `school_id`; trusted service-role operations still enforce the verified school session at the API and service layers.
+
+### Attendance calendar tables
+
+- `attendance_holidays`: date-range events (`holiday_date` through `end_date`) for government/public holidays, school holidays, emergency closures, vacations, and other closures. `scope` is `school`, `classes`, or `students`.
+- `attendance_holiday_classes`: classes targeted by a class-scoped event.
+- `attendance_holiday_students`: students targeted by a student-scoped event.
+
+School/class events block the entire applicable register. Student events exempt only those students while attendance remains available to their classmates. All applicable events are excluded from report calculations. Migrations: `0022_attendance_holidays.sql` and `0023_scoped_attendance_calendar.sql`.
 
 ---
 
@@ -319,7 +350,6 @@ These tables are **not yet created** but the foreign key relationships and namin
 | `teachers` | `school_id`, `user_id` | Teacher records |
 | `parents` | `school_id`, `user_id` | Parent/guardian records |
 | `sections` | `school_id`, `class_id` | Class sections |
-| `attendance` | `school_id`, `student_id`, `class_id` | Daily attendance |
 | `exams` | `school_id`, `class_id` | Exam definitions |
 | `grades` | `school_id`, `exam_id`, `student_id` | Exam results |
 | `invoices` | `school_id`, `student_id` | Fee invoices |
@@ -393,7 +423,11 @@ supabase/
     ├── 0017_per_particular_payments.sql     ✅ Applied — per-particular payment tracking in JSONB particulars
     ├── 0018_annual_dues_tracking.sql        ✅ Applied — annual_dues_original column on students (tracks initial annual dues for the year, caps reversal on payment deletion)
     ├── 0019_subjects_and_timetable.sql      📝 Written — subjects, class assignments, weekdays, periods, timetable entries; run db:migrate
-    └── 0020_class_subject_total_marks.sql   📝 Written — compatibility rename/conversion from subject_number to total_marks
+    ├── 0020_class_subject_total_marks.sql   📝 Written — compatibility rename/conversion from subject_number to total_marks
+    ├── 0021_student_attendance.sql          📝 Written — student attendance, indexes, tenant RLS, updated_at trigger
+    ├── 0022_attendance_holidays.sql         📝 Written — school-wide holidays/closures, tenant RLS, date index
+    ├── 0023_scoped_attendance_calendar.sql  📝 Written — date ranges plus class/student holiday targets and RLS
+    └── 0024_class_weekday_status.sql         📝 Written — per-class Working/Weekend status and compatibility backfill
 ```
 
 Run: `npm run db:migrate`
@@ -414,6 +448,12 @@ CREATE INDEX idx_students_school_id ON students(school_id);
 CREATE INDEX idx_students_class_id ON students(class_id);
 CREATE INDEX idx_students_registration_no ON students(registration_no);
 CREATE INDEX idx_student_attachments_student_id ON student_attachments(student_id);
+CREATE INDEX idx_student_attendance_school_class_date ON student_attendance(school_id, class_id, attendance_date);
+CREATE INDEX idx_student_attendance_school_student_date ON student_attendance(school_id, student_id, attendance_date);
+CREATE INDEX idx_attendance_holidays_school_date ON attendance_holidays(school_id, holiday_date);
+CREATE INDEX idx_attendance_holiday_classes_school_class ON attendance_holiday_classes(school_id, class_id);
+CREATE INDEX idx_attendance_holiday_students_school_student ON attendance_holiday_students(school_id, student_id);
+CREATE INDEX idx_class_weekdays_school_class_status ON class_weekdays(school_id, class_id, is_weekend);
 CREATE INDEX idx_fee_particulars_school_id ON fee_particulars(school_id);
 CREATE INDEX idx_fee_particulars_sort_order ON fee_particulars(school_id, sort_order);
 CREATE INDEX idx_fee_invoices_school_id ON fee_invoices(school_id);

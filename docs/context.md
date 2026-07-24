@@ -32,12 +32,13 @@ Built and working:
 - **Fee Report** — 4 summary cards (total estimated after discount, total collected, total remaining, collection rate); month filter (defaults to current month); CSS bar chart showing collection by class (estimated vs collected overlay); class breakdown table (Class, Students, Estimated, Collected, Remaining, Collection Rate) with search + totals footer row; print report (print-optimized HTML in new tab); Excel export (xlsx-js-style with styled headers + totals row); API at `GET /api/fees/[schoolId]/report?feeMonth=YYYY-MM`
 - **Fee service modularization** — `fee-invoice.service.ts` split into 4 files: `fee-invoice.service.ts` (generation + invoice queries), `fee-payment.service.ts` (collectFee, deletePayment, getPaymentHistory, payAnnualDue), `fee-defaulters.service.ts` (getFeeDefaulters), `fee-report.service.ts` (getFeeReport)
 - **Subjects** — default catalog seeded on first access, custom add/edit/delete, per-class total marks, assignment view/edit/delete, and searchable multi-class duplication
-- **Timetable** — configurable weekdays/weekends, searchable multi-class weekday/period duplication, an editable timetable grid supporting breaks, subjects, active employee teachers, apply-to-weekdays, and read-only preview by class or teacher
+- **Timetable** — explicit per-class Working/Weekend weekday settings, searchable multi-class weekday/period duplication, an editable timetable grid supporting breaks, subjects, active employee teachers, apply-to-weekdays, and read-only preview by class or teacher
 - **Reusable class selectors** — class pickers across Subjects, Timetable, Students, Fees, promotion/import flows, ID-card filters, and shared directories are searchable, initially show 10 results, and reveal more in batches; existing All Classes, No Class, and intentional multi-class behavior is preserved
+- **Student Attendance** — daily class register with current-date default, Not Marked draft state, Mark All Present, explicit partial-save confirmation, present/absent/late/leave statuses, class-specific working weekdays, date-range vacation/closure calendar scoped to the school/classes/students, automatic student exemptions, student day-by-day report, class aggregate report, searchable class/student selection, Excel export, and browser Print / Save as PDF
 
 Not yet built (Phase 2/3):
 - Teacher / Parent / Student portals (role cards exist in the login UI but show a "coming soon" toast)
-- Attendance, Exams, Teachers/Parents CRUD
+- Employee attendance, attendance audit history, Exams, Teachers/Parents CRUD
 - Subscription billing, notifications, i18n, RBAC
 
 ---
@@ -188,6 +189,7 @@ app/
 │           ├── layout.tsx           Settings header ("General Settings")
 │           ├── page.tsx             redirect → institute-profile
 │           ├── institute-profile/page.tsx
+│           ├── calendar/page.tsx     School/class/student vacation and closure calendar
 │           ├── account-settings/page.tsx
 │           └── rules-regulations/page.tsx   Employee & student rules text editor
 │
@@ -379,7 +381,7 @@ Only Admin has a backend. Employee/Student, Sign Up, and Forgot-password show in
 
 - **`app/(admin)/layout.tsx`** is a Server Component: validates `school_session` (role `admin`), prefetches the school record, renders `<AdminShell schoolId initialSchool>`. Unauthenticated → redirect `/school-login`.
 - **`AdminShell`** (`components/layout/admin-shell.tsx`) is a client context provider: `school`, `sidebarOpen`, `setSidebarOpen`, `logout`. `useAdminShell()` is the hook features consume (e.g. settings forms read `school` for `initialData`).
-- **Sidebar** (`admin-sidebar.tsx`): dark theme, mobile overlay (AnimatePresence), active-link highlight, and **collapsible groups** for Students, Employees, and Settings. Each group has tab-based sub-items that navigate via `?tab=` URL params (e.g., `/school/students?tab=family`). Groups auto-expand when on the parent page. Active sub-item highlighted via `useSearchParams`.
+- **Sidebar** (`admin-sidebar.tsx`): dark theme, mobile overlay (AnimatePresence), active-link highlight, and collapsible module groups. The viewport-height shell keeps the brand header and Logout action fixed while the navigation list scrolls independently. General Settings includes the dedicated `/school/settings/calendar` page.
 - **Topbar** (`admin-topbar.tsx`): breadcrumb + school badge (logo) + admin avatar + mobile menu button.
 
 ---
@@ -638,6 +640,14 @@ See `docs/architecture.md` §Search Pattern Consistency and §Page Container & L
 - `GET /api/employees/[schoolId]/job-offer/[employeeId]` — Job Offer Letter PDF (server-side)
 - `GET /api/employees/id-cards/pdf` — Puppeteer Employee ID Card PDF (supports ids, theme params)
 
+### API Routes (Attendance)
+
+- `GET /api/attendance/[schoolId]/daily?classId=&date=` — current class roster merged with saved statuses; missing records return as Not Marked
+- `PUT /api/attendance/[schoolId]/daily` — replace the marked snapshot for a class/date; partial saves require `confirm_partial=true`
+- `GET /api/attendance/[schoolId]/reports/student?studentId=&startDate=&endDate=` — day-by-day student report and totals
+- `GET /api/attendance/[schoolId]/reports/class?classId=&startDate=&endDate=` — per-student class aggregates and class totals
+- `GET|POST|PATCH|DELETE /api/attendance/[schoolId]/calendar` — month-range holiday listing and school-wide closure management
+
 ---
 
 ## 15. Shared UI Components (`components/ui/`)
@@ -659,7 +669,7 @@ See `docs/architecture.md` §Search Pattern Consistency and §Page Container & L
 
 1. **Verify migrations applied**, then do a cleanup pass to clear the pre-existing `tsc` errors so `npm run build` passes.
 2. **Sections** CRUD (assign section teachers), then dedicated **Teachers** and **Parents**. Timetable currently selects teachers from active employees.
-3. **Attendance** (daily, per class/section), **Exams & Grades** (mark entry, report cards), **Fees** (structure, invoices, payments).
+3. Extend student attendance with sections, holidays/calendar, and teacher-portal permissions; then build **Exams & Grades** (mark entry, report cards).
 4. Then Phase 3: subscriptions/billing (Stripe), role portals, notifications, reports.
 
 See `docs/roadmap.md` for the full plan.

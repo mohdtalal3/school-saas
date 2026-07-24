@@ -154,6 +154,7 @@ export interface ClassWeekday {
   school_id: string;
   class_id: string;
   weekday_id: string;
+  is_weekend: boolean;
   weekday?: Weekday;
   class?: Pick<SchoolClass, "id" | "name">;
   created_at: string;
@@ -239,6 +240,84 @@ export type UpdateStudent = Partial<
 export interface StudentWithClass extends Student {
   class_name: string | null;
   class_fee: number | null;
+}
+
+// ── Student Attendance ───────────────────────────────────────
+
+export type AttendanceStatus = "present" | "absent" | "late" | "leave";
+export type AttendanceDraftStatus = AttendanceStatus | "not_marked";
+export type AttendanceHolidayType = "government" | "public" | "school" | "emergency" | "other";
+export type AttendanceHolidayScope = "school" | "classes" | "students";
+
+export interface AttendanceHoliday {
+  id: string;
+  school_id: string;
+  holiday_date: string;
+  end_date: string;
+  title: string;
+  holiday_type: AttendanceHolidayType;
+  scope: AttendanceHolidayScope;
+  note: string | null;
+  class_ids: string[];
+  students: Array<Pick<Student, "id" | "name" | "registration_no">>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AttendanceDayStatus {
+  date: string;
+  weekdayName: string;
+  isWorkingDay: boolean;
+  reason: "working_day" | "weekend" | "class_off" | "holiday";
+  holiday: AttendanceHoliday | null;
+}
+
+export interface StudentAttendance {
+  id: string;
+  school_id: string;
+  class_id: string;
+  student_id: string;
+  attendance_date: string;
+  status: AttendanceStatus;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DailyAttendanceStudent {
+  student_id: string;
+  name: string;
+  registration_no: string | null;
+  photo_url: string | null;
+  status: AttendanceDraftStatus;
+  note: string;
+  is_exempt: boolean;
+  exemption_title: string | null;
+}
+
+export interface AttendanceStats {
+  present: number;
+  absent: number;
+  late: number;
+  leave: number;
+  marked: number;
+  attendanceRate: number;
+}
+
+export interface StudentAttendanceReport {
+  student: Pick<Student, "id" | "name" | "registration_no" | "photo_url"> & { class_name: string | null };
+  startDate: string;
+  endDate: string;
+  records: Array<StudentAttendance & { class_name: string | null }>;
+  stats: AttendanceStats;
+}
+
+export interface ClassAttendanceReport {
+  class: Pick<SchoolClass, "id" | "name">;
+  startDate: string;
+  endDate: string;
+  students: Array<Pick<Student, "id" | "name" | "registration_no"> & AttendanceStats>;
+  stats: AttendanceStats;
 }
 
 // ── Student Attachments ───────────────────────────────────────

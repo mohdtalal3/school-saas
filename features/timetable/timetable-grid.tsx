@@ -29,7 +29,7 @@ export function TimetableGrid({
   emptyCellText = "Not assigned",
 }: TimetableGridProps) {
   const workingDays = days
-    .filter((row) => !row.weekday?.is_weekend)
+    .filter((row) => !row.is_weekend)
     .sort((a, b) => (a.weekday?.sort_order ?? 0) - (b.weekday?.sort_order ?? 0));
   const keys = Array.from(new Set(periods.map(rowKey)));
   const rows = keys

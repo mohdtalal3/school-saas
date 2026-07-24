@@ -34,6 +34,8 @@ import {
   CalendarDays,
   Clock3,
   CalendarRange,
+  ClipboardCheck,
+  UserRoundSearch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -58,6 +60,7 @@ const baseItems: SidebarItem[] = [
 const settingsItems: SidebarItem[] = [
   { href: "/school/settings/institute-profile", label: "Institute Profile", icon: Building2 },
   { href: "/school/settings/rules-regulations", label: "Rules & Regulations", icon: ScrollText },
+  { href: "/school/settings/calendar", label: "Calendar Settings", icon: CalendarDays },
   { href: "/school/settings/account-settings", label: "Account Settings", icon: UserCog },
 ];
 
@@ -101,6 +104,12 @@ const timetableSubItems: SidebarSubItem[] = [
   { label: "Preview Timetable", icon: Search, tab: "preview" },
 ];
 
+const attendanceSubItems: SidebarSubItem[] = [
+  { label: "Student Attendance", icon: ClipboardCheck, tab: "students" },
+  { label: "Student Report", icon: UserRoundSearch, tab: "student-report" },
+  { label: "Class Report", icon: BarChart3, tab: "class-report" },
+];
+
 interface AdminSidebarProps {
   open: boolean;
   onClose: () => void;
@@ -129,6 +138,7 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
   );
   const [subjectsOpen, setSubjectsOpen] = React.useState(pathname?.startsWith("/school/subjects") ?? false);
   const [timetableOpen, setTimetableOpen] = React.useState(pathname?.startsWith("/school/timetable") ?? false);
+  const [attendanceOpen, setAttendanceOpen] = React.useState(pathname?.startsWith("/school/attendance") ?? false);
 
   React.useEffect(() => {
     // Auto-expand if you navigate into a sub-page elsewhere.
@@ -138,6 +148,7 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
     if (pathname?.startsWith("/school/fees")) setFeesOpen(true);
     if (pathname?.startsWith("/school/subjects")) setSubjectsOpen(true);
     if (pathname?.startsWith("/school/timetable")) setTimetableOpen(true);
+    if (pathname?.startsWith("/school/attendance")) setAttendanceOpen(true);
   }, [pathname]);
 
   const settingsActive = pathname?.startsWith("/school/settings") ?? false;
@@ -147,6 +158,7 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
   const feesActive = pathname?.startsWith("/school/fees") ?? false;
   const subjectsActive = pathname?.startsWith("/school/subjects") ?? false;
   const timetableActive = pathname?.startsWith("/school/timetable") ?? false;
+  const attendanceActive = pathname?.startsWith("/school/attendance") ?? false;
 
   return (
     <>
@@ -166,11 +178,11 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 transform border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 scrollbar-thin overflow-y-auto",
+          "fixed inset-y-0 left-0 z-50 flex h-dvh w-64 transform flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border px-4">
           <Link href="/school" className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10">
               <GraduationCap className="h-5 w-5 text-white" />
@@ -193,7 +205,7 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
           </Button>
         </div>
 
-        <nav className="space-y-1 p-3">
+        <nav className="scrollbar-thin min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain p-3">
           <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
             Main
           </p>
@@ -283,6 +295,8 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
           <SidebarTabGroup label="Subjects" icon={BookOpen} open={subjectsOpen} setOpen={setSubjectsOpen} active={subjectsActive} currentTab={currentTab} defaultTab="create" href="/school/subjects" items={subjectSubItems} onClose={onClose} />
 
           <SidebarTabGroup label="Timetable" icon={CalendarRange} open={timetableOpen} setOpen={setTimetableOpen} active={timetableActive} currentTab={currentTab} defaultTab="weekdays" href="/school/timetable" items={timetableSubItems} onClose={onClose} />
+
+          <SidebarTabGroup label="Attendance" icon={ClipboardCheck} open={attendanceOpen} setOpen={setAttendanceOpen} active={attendanceActive} currentTab={currentTab} defaultTab="students" href="/school/attendance" items={attendanceSubItems} onClose={onClose} />
 
           {/* Classes */}
           <Link
@@ -487,7 +501,7 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
           </AnimatePresence>
         </nav>
 
-        <div className="absolute inset-x-0 bottom-0 border-t border-sidebar-border p-3">
+        <div className="shrink-0 border-t border-sidebar-border p-3">
           <button
             onClick={onLogout}
             className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-white"

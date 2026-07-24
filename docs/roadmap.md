@@ -82,7 +82,7 @@
 
 ### 2.6 Timetable (COMPLETE)
 
-- ✅ Configurable weekday catalog with weekend marking
+- ✅ Configurable weekday catalog plus explicit per-class Working/Weekend status
 - ✅ Assign weekdays to classes and duplicate a class schedule to multiple searched classes
 - ✅ Class/day-specific time periods with shared-day creation, edit/delete, and multi-class duplication
 - ✅ Timetable grid with break, assigned subject, active employee/teacher, and multi-weekday application
@@ -121,11 +121,21 @@
 - Parent CRUD.
 - Link to students.
 
-### 2.10 Attendance (PENDING)
+### 2.10 Attendance (IN PROGRESS)
 
-- Daily attendance (per class/section).
-- Calendar view.
-- Reports (class-wise, student-wise).
+- ✅ Daily student attendance per class/date with Not Marked draft status
+- ✅ Mark All Present plus individual Present / Absent / Late / Leave changes
+- ✅ Partial-save confirmation while any student remains Not Marked
+- ✅ Student day-by-day report with month-to-date default, custom range, aggregation, Excel, and Print / PDF
+- ✅ Class-wise per-student aggregate report with drill-down to the student report, Excel, and Print / PDF
+- ✅ Class-specific attendance days using `class_weekdays.is_weekend`, including different Saturday/Sunday rules per class
+- ✅ Date-range calendar for government/public holidays, school holidays, emergency closures, vacations, and other special closures
+- ✅ Calendar scopes for the entire school, selected classes, or selected students
+- ✅ Student vacation exemptions without blocking classmates’ attendance
+- ✅ Weekend and holiday exclusion from attendance totals and percentages
+- ⏳ Section-aware attendance and historical enrollment roster
+- ⏳ Employee attendance
+- ⏳ Teacher-portal attendance permissions and workflow
 
 ### 2.11 Exams & Grades (PENDING)
 
@@ -182,7 +192,7 @@
 
 - School-wide dashboards.
 - Exportable reports (PDF, Excel).
-- Attendance trends.
+- Attendance trends and holiday-aware scheduled-day analytics.
 - Fee collection trends.
 
 ---

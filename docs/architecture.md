@@ -94,6 +94,7 @@ A single Next.js 15 (App Router) application that hosts:
   - `feeReportService.getFeeReport(schoolId, feeMonth)` (summary + per-class breakdown with estimated/collected/remaining/collectionRate)
   - `subject.service.ts` owns subject defaults, catalog CRUD, class subject total marks, and safe class-to-class duplication.
   - `timetable.service.ts` owns weekdays, class weekday assignments, per-day periods, duplication, and timetable entry validation/upserts.
+  - `attendance.service.ts` owns daily attendance snapshots, class-specific school-day resolution, scoped vacation/holiday settings, and student/class range aggregation. Missing database rows represent Not Marked; only finalized statuses are stored. Each `class_weekdays` row explicitly records whether that weekday is working or weekend/off for that class. Without any class configuration, `weekdays.is_weekend` is the compatibility fallback. School, class, and student calendar scopes are evaluated by both daily saves and reports.
 - Errors thrown as `AppError` subclasses; the API layer converts them to JSON responses.
 
 ### 4. Data Layer (`lib/supabase`)
@@ -176,7 +177,7 @@ Single database, shared schema, **school_id** discriminator everywhere.
 
 ### Sidebar Dropdown Groups
 
-The admin sidebar uses collapsible groups for modules with multiple sub-views (Students, Employees, Settings). Each group:
+The admin sidebar uses collapsible groups for modules with multiple sub-views (Students, Employees, Fees, Subjects, Timetable, Attendance, and Settings). Its header and logout action remain fixed while the navigation region scrolls independently within the viewport. Each group:
 
 - Has a parent button that toggles open/close (Framer Motion animated).
 - Contains sub-items that navigate via URL query params (e.g., `/school/students?tab=family`).
@@ -192,11 +193,13 @@ Tabs are no longer managed by local React state. Instead:
 - Content is conditionally rendered based on the tab value.
 - This enables deep-linking, browser back/forward, and bookmarkable views.
 - Subjects use `/school/subjects?tab=create|assign`; Timetable uses `/school/timetable?tab=weekdays|periods|create|preview`.
+- Attendance uses `/school/attendance?tab=students|student-report|class-report`; class-report student rows deep-link to `student-report&studentId=<id>`.
+- Calendar Settings is a General Settings page at `/school/settings/calendar`; the former attendance calendar URL redirects there for compatibility.
 
 ### Subject and Timetable Model
 
 - `subjects` is a reusable school catalog; `class_subjects` is the class-specific join and stores the positive integer `total_marks` used by exams and grading.
-- `weekdays` is reusable across the school; `class_weekdays` determines which days a class attends.
+- `weekdays` is the reusable school catalog and supplies setup defaults; `class_weekdays.is_weekend` is the authoritative Working/Weekend status for each configured class and day.
 - Times belong to `class_periods`, keyed by class + weekday + position, allowing different day/class times without duplicating timetable logic.
 - `timetable_entries` references the configured class period. Multi-day application resolves matching period positions and excludes days marked as weekends.
 - Until dedicated Teacher CRUD exists, the teacher selector uses active employees and stores `employees.id`.

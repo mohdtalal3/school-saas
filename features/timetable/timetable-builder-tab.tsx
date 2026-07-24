@@ -39,7 +39,7 @@ export function TimetableBuilderTab({ schoolId }: { schoolId: string }) {
     onError: (e) => toast({ title: "Could not update timetable", description: e instanceof Error ? e.message : "Try again", variant: "destructive" }),
   });
 
-  const workingDays = (days.data ?? []).filter((row) => !row.weekday?.is_weekend);
+  const workingDays = (days.data ?? []).filter((row) => !row.is_weekend);
   const openEditor = (period: ClassPeriod, entry?: TimetableEntry) => {
     setActivePeriod(period);
     setActiveEntry(entry ?? null);

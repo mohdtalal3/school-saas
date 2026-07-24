@@ -43,6 +43,7 @@ export function TimetablePreviewTab({ schoolId }: { schoolId: string }) {
     school_id: schoolId,
     class_id: "",
     weekday_id: period.weekday_id,
+    is_weekend: false,
     weekday: period.weekday,
     created_at: "",
   } as ClassWeekday])).values());

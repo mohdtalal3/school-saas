@@ -115,26 +115,28 @@ export async function getClassWeekdays(schoolId: string, classId?: string): Prom
 export async function setClassWeekdays(
   schoolId: string,
   classId: string,
-  weekdayIds: string[]
+  days: Array<{ weekday_id: string; is_weekend: boolean }>
 ): Promise<ClassWeekday[]> {
   const supabase: SupabaseClient = createSupabaseService();
   const { data: schoolClass } = await supabase
     .from("classes").select("id").eq("id", classId).eq("school_id", schoolId).eq("is_active", true).maybeSingle();
   if (!schoolClass) throw new NotFoundError("Class not found");
 
-  if (weekdayIds.length) {
+  const uniqueWeekdayIds = Array.from(new Set(days.map((day) => day.weekday_id)));
+  if (uniqueWeekdayIds.length !== days.length) throw new AppError("Each weekday can only be configured once", "DUPLICATE_WEEKDAY");
+  if (uniqueWeekdayIds.length) {
     const { count } = await supabase
       .from("weekdays").select("id", { count: "exact", head: true })
-      .eq("school_id", schoolId).eq("is_active", true).in("id", weekdayIds);
-    if ((count ?? 0) !== weekdayIds.length) throw new AppError("One or more weekdays are invalid", "INVALID_WEEKDAYS");
+      .eq("school_id", schoolId).eq("is_active", true).in("id", uniqueWeekdayIds);
+    if ((count ?? 0) !== uniqueWeekdayIds.length) throw new AppError("One or more weekdays are invalid", "INVALID_WEEKDAYS");
   }
 
   const { error: deleteError } = await supabase
     .from("class_weekdays").delete().eq("school_id", schoolId).eq("class_id", classId);
   if (deleteError) throw new Error(`Failed to update class weekdays: ${deleteError.message}`);
-  if (weekdayIds.length) {
+  if (days.length) {
     const { error } = await supabase.from("class_weekdays").insert(
-      weekdayIds.map((weekday_id) => ({ school_id: schoolId, class_id: classId, weekday_id })) as never
+      days.map((day) => ({ school_id: schoolId, class_id: classId, weekday_id: day.weekday_id, is_weekend: day.is_weekend })) as never
     );
     if (error) throw new Error(`Failed to assign weekdays: ${error.message}`);
   }
@@ -150,7 +152,7 @@ export async function duplicateClassWeekdays(
   if (!uniqueTargetIds.length) throw new AppError("Choose at least one different target class", "INVALID_TARGET");
   const source = await getClassWeekdays(schoolId, sourceClassId);
   for (const targetClassId of uniqueTargetIds) {
-    await setClassWeekdays(schoolId, targetClassId, source.map((row) => row.weekday_id));
+    await setClassWeekdays(schoolId, targetClassId, source.map((row) => ({ weekday_id: row.weekday_id, is_weekend: row.is_weekend })));
   }
   return { targets: uniqueTargetIds.length };
 }
@@ -181,7 +183,7 @@ export async function createClassPeriods(
   const supabase: SupabaseClient = createSupabaseService();
   const [{ data: schoolClass }, { count: assignedDayCount }] = await Promise.all([
     supabase.from("classes").select("id").eq("id", input.class_id).eq("school_id", schoolId).eq("is_active", true).maybeSingle(),
-    supabase.from("class_weekdays").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("class_id", input.class_id).in("weekday_id", input.weekday_ids),
+    supabase.from("class_weekdays").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("class_id", input.class_id).eq("is_weekend", false).in("weekday_id", input.weekday_ids),
   ]);
   if (!schoolClass) throw new NotFoundError("Class not found");
   if ((assignedDayCount ?? 0) !== input.weekday_ids.length) {
@@ -234,11 +236,11 @@ export async function duplicateClassPeriods(
   if (!uniqueTargetIds.length) throw new AppError("Choose at least one different target class", "INVALID_TARGET");
   const supabase: SupabaseClient = createSupabaseService();
   const source = await getClassPeriods(schoolId, sourceClassId);
-  const sourceDays = await getClassWeekdays(schoolId, sourceClassId);
+  const sourceDays = (await getClassWeekdays(schoolId, sourceClassId)).filter((row) => !row.is_weekend);
   const sourceNameById = new Map(sourceDays.map((row) => [row.weekday_id, row.weekday?.name.toLowerCase()]));
   let copied = 0;
   for (const targetClassId of uniqueTargetIds) {
-    const targetDays = await getClassWeekdays(schoolId, targetClassId);
+    const targetDays = (await getClassWeekdays(schoolId, targetClassId)).filter((row) => !row.is_weekend);
     const targetByName = new Map(targetDays.map((row) => [row.weekday?.name.toLowerCase(), row.weekday_id]));
     const rows = source.flatMap((period) => {
       const targetWeekdayId = targetByName.get(sourceNameById.get(period.weekday_id));
@@ -327,13 +329,20 @@ export async function saveTimetableEntry(
 
   let periodIds = [input.class_period_id];
   if (input.apply_weekday_ids?.length) {
-    const { data, error } = await supabase
-      .from("class_periods")
-      .select("id,weekday:weekdays!inner(is_weekend)")
+    const { data: workingAssignments, error: assignmentError } = await supabase
+      .from("class_weekdays")
+      .select("weekday_id")
       .eq("school_id", schoolId).eq("class_id", input.class_id)
-      .eq("position", (sourcePeriod as Record<string, unknown>).position)
-      .in("weekday_id", input.apply_weekday_ids)
-      .eq("weekdays.is_weekend", false);
+      .eq("is_weekend", false)
+      .in("weekday_id", input.apply_weekday_ids);
+    if (assignmentError) throw new Error(`Failed to validate working days: ${assignmentError.message}`);
+    const workingWeekdayIds = ((workingAssignments ?? []) as Array<{ weekday_id: string }>).map((row) => row.weekday_id);
+    const { data, error } = workingWeekdayIds.length
+      ? await supabase.from("class_periods").select("id")
+        .eq("school_id", schoolId).eq("class_id", input.class_id)
+        .eq("position", (sourcePeriod as Record<string, unknown>).position)
+        .in("weekday_id", workingWeekdayIds)
+      : { data: [], error: null };
     if (error) throw new Error(`Failed to find matching periods: ${error.message}`);
     periodIds = Array.from(new Set([input.class_period_id, ...((data ?? []) as Array<{ id: string }>).map((row) => row.id)]));
   }

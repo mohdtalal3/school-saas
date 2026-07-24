@@ -11,7 +11,7 @@ export default function SettingsLayout({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">General Settings</h1>
         <p className="text-sm text-muted-foreground">
-          Manage your school's profile and account preferences.
+          Manage your school profile, calendar, rules, and account preferences.
         </p>
       </div>
       {children}
