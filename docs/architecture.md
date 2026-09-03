@@ -327,3 +327,52 @@ All list views and search-driven features follow the same pattern:
 | `invoice-search-tab.tsx` | Search invoices — debounced search by name/reg no/father CNIC/mobile, month filter, preview/download PDF per invoice or bulk, delete invoice |
 | `fee-defaulters-tab.tsx` | Fee defaulters — summary cards (total defaulters, outstanding amount), month filter (defaults to current month), class filter, status filter (Not Paid / Partial / All, defaults to Not Paid), debounced search, paginated table with invoice/student/remaining details, print list button (opens print-optimized HTML) |
 | `fee-report-tab.tsx` | Fee report — 4 summary cards (estimated, collected, remaining, collection rate), month filter (defaults to current month), CSS bar chart showing collection by class (estimated vs collected), class breakdown table with search + totals row, print report (print-optimized HTML), Excel export (xlsx-js-style) |
+
+### Key feature directories (`features/subjects/`)
+
+| File | Purpose |
+| --- | --- |
+| `subject-management.tsx` | Subject module shell with URL-driven Create Subjects and Assign Subjects views |
+| `subject-catalog-tab.tsx` | School subject catalog with default seeding, add/edit/delete, and soft-delete behavior |
+| `assign-subjects-tab.tsx` | Class subject assignments with `total_marks`, assignment table, edit/delete, and searchable multi-class duplication |
+
+### Key feature directories (`features/timetable/`)
+
+| File | Purpose |
+| --- | --- |
+| `timetable-management.tsx` | Timetable module shell with URL-driven Weekdays, Time Periods, Create Timetable, and Preview Timetable views |
+| `weekdays-tab.tsx` | Per-class Working/Weekend weekday setup and searchable multi-class duplication |
+| `time-periods-tab.tsx` | Class/day period timing setup, edit/delete, and searchable multi-class duplication |
+| `timetable-builder-tab.tsx` | Editable timetable grid with break/subject/employee teacher assignment and apply-to-weekdays |
+| `timetable-preview-tab.tsx` | Read-only timetable preview by searched class or employee teacher |
+| `timetable-grid.tsx` | Shared timetable renderer used by builder, previews, and future role portals |
+
+### Key feature directories (`features/attendance/`)
+
+| File | Purpose |
+| --- | --- |
+| `attendance-management.tsx` | Attendance route shell that renders student daily/report views or the Employee Attendance module without page-level tabs |
+| `daily-student-attendance-tab.tsx` | Daily class register with Not Marked, Mark All Present, partial confirmation, and holiday/weekend blocking |
+| `student-attendance-report-tab.tsx` | Student day-by-day attendance report with date range, aggregation, Excel, and print |
+| `class-attendance-report-tab.tsx` | Class-wise aggregate report with student drill-down, Excel, and print |
+| `attendance-calendar-tab.tsx` | Compatibility route for the moved General Settings calendar |
+| `attendance-report-ui.tsx` | Shared report cards/table UI for attendance reports |
+| `attendance-utils.ts` | Student attendance status/date helper functions |
+| `report-export.ts` | Excel and browser print helpers for student attendance reports |
+| `api.ts` | Student attendance client API helpers |
+
+### Key feature directories (`features/employee-attendance/`)
+
+| File | Purpose |
+| --- | --- |
+| `employee-attendance-management.tsx` | Employee Attendance subview router for Daily, Calendar, Settings, Monthly Report, Employee Report, and Import History |
+| `daily-employee-attendance-tab.tsx` | Daily employee register with punches, statuses, notes, finalization, import modal, and audit access |
+| `employee-attendance-calendar-tab.tsx` | Employee closure calendar using student-calendar-style off-day cards and default weekly-off cells |
+| `employee-attendance-settings-tab.tsx` | Default, weekday, seasonal, date-range, and exact-date schedule configuration |
+| `employee-monthly-report-tab.tsx` | Compact monthly employee attendance report with totals and export/print/copy actions |
+| `employee-detail-report-tab.tsx` | Individual employee daily breakdown with summary cards and month/employee navigation |
+| `attendance-import-modal.tsx` | CSV/Excel upload, validation, preview, conflict strategy, and confirmed import |
+| `attendance-import-history-tab.tsx` | Import history/detail with safe undo behavior |
+| `employee-attendance-status-badge.tsx` | Employee attendance status badge colors and labels |
+| `report-actions.ts` | Shared employee report print, copy, Excel, and PDF helpers |
+| `api.ts` | Employee attendance client API helpers |

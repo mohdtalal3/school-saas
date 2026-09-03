@@ -238,11 +238,12 @@ components/
 ├── providers.tsx            QueryClientProvider + ToastProvider (root)
 ├── layout/
 │   ├── admin-shell.tsx       Client context provider (school, sidebar state, logout) + layout
-│   ├── admin-sidebar.tsx     ★ Collapsible sidebar groups (Students, Employees, Fees, Settings); tab-based sub-items; mobile overlay
+│   ├── admin-sidebar.tsx     ★ Collapsible sidebar groups, including separate Student Attendance and Employee Attendance; mobile overlay
 │   └── admin-topbar.tsx      Breadcrumb + school badge + admin avatar + mobile menu button
 ├── layout/master-navbar.tsx
 └── ui/                       button, input, label, select, card, avatar, dropdown-menu, textarea, separator, toast,
-                                dialog, tabs, pagination, directory-table, search-picker, letter-search-tab
+                                dialog, tabs, pagination, directory-table, search-picker, searchable-select,
+                                searchable-multi-select, letter-search-tab
 
 features/
 ├── auth/
@@ -295,10 +296,48 @@ fees/
 ├── fee-defaulters-tab.tsx          Fee defaulters — summary cards, month filter (defaults to current month), class filter, search, paginated table, print list
 └── fee-report-tab.tsx              Fee report — 4 summary cards, month filter, CSS bar chart by class, class breakdown table with search, print + Excel export
 
+subjects/
+├── subject-management.tsx          Main page — Create Subjects and Assign Subjects tab routing
+├── subject-catalog-tab.tsx         Subject catalog with defaults, add/edit/delete
+└── assign-subjects-tab.tsx         Assign subjects to classes with total marks and multi-class duplication
+
+timetable/
+├── timetable-management.tsx        Main page — Weekdays, Time Periods, Create Timetable, Preview Timetable
+├── weekdays-tab.tsx                Class weekday Working/Weekend setup and duplication
+├── time-periods-tab.tsx            Class/day period setup and duplication
+├── timetable-builder-tab.tsx       Editable grid with subjects, breaks, teachers, and apply-to-weekdays
+├── timetable-preview-tab.tsx       Read-only preview by searched class or teacher
+└── timetable-grid.tsx              Shared timetable renderer
+
+attendance/
+├── attendance-management.tsx       Router for student attendance views and employee attendance module
+├── daily-student-attendance-tab.tsx Daily class register with Not Marked workflow
+├── student-attendance-report-tab.tsx Student day-by-day report
+├── class-attendance-report-tab.tsx Class aggregate report
+├── attendance-calendar-tab.tsx     Compatibility wrapper/redirect for General Settings calendar
+├── attendance-report-ui.tsx        Shared report summaries/tables
+├── attendance-utils.ts             Status/date helpers
+├── report-export.ts                Excel and print helpers
+└── api.ts                          Student attendance client API helpers
+
+employee-attendance/
+├── employee-attendance-management.tsx      Router for Employee Attendance subviews
+├── daily-employee-attendance-tab.tsx       Daily employee register with punches/finalization/import
+├── employee-attendance-calendar-tab.tsx    Employee closure calendar styled like student calendar
+├── employee-attendance-settings-tab.tsx    Default, weekday, seasonal, range, and exact-date schedules
+├── employee-monthly-report-tab.tsx         Compact monthly employee report
+├── employee-detail-report-tab.tsx          Individual employee daily breakdown
+├── attendance-import-modal.tsx             CSV/Excel preview and commit workflow
+├── attendance-import-history-tab.tsx       Import history/detail and undo
+├── employee-attendance-status-badge.tsx    Status badge colors
+├── report-actions.ts                       Print, copy, Excel, and PDF actions
+└── api.ts                                  Employee attendance client API helpers
+
 lib/
 ├── env.ts                    Zod-validated env access
 ├── api-response.ts           ApiResponse type + AppError classes
 ├── auth/jwt.ts               create/get/set/clear master + school sessions
+├── employee-attendance-calculations.ts  Pure schedule/punch calculation helpers
 ├── utils.ts                  cn() (clsx+twMerge), formatDate, slugify, getInitials
 └── supabase/                 index, supabase-browser, supabase-server, supabase-service
 
@@ -317,7 +356,10 @@ services/                     (business logic; no JSX)
 └── fee-defaulters.service.ts getFeeDefaulters (unpaid/partial invoices with search, class, month filters)
 └── fee-report.service.ts     getFeeReport (summary + per-class breakdown with estimated/collected/remaining/collectionRate)
 ├── subject.service.ts        Subject defaults/catalog + class assignments and duplication
-└── timetable.service.ts      Weekdays, class days, periods, timetable entries, duplication
+├── timetable.service.ts      Weekdays, class days, periods, timetable entries, duplication
+├── attendance.service.ts     Student daily attendance, scoped calendar events, and reports
+├── employee-attendance.service.ts        Employee schedules, daily registers, calculations, audit, calendar, and reports
+└── employee-attendance-import.service.ts Employee CSV/Excel preview, machine mappings, import commit/history/undo
 
 types/
 ├── school.types.ts           School, SchoolAdmin, Employee, NewEmployee, UpdateEmployee, NewSchool, UpdateSchool,
@@ -345,8 +387,14 @@ supabase/
     ├── 0016_collect_fee_allocations.sql    per-particular payment allocations
     ├── 0017_per_particular_payments.sql    per-particular payment tracking in JSONB particulars
     ├── 0018_annual_dues_tracking.sql       annual_dues_original column on students (reversal cap)
-    ├── 0019_subjects_and_timetable.sql     subject catalog/assignments + weekdays/periods/timetable
-    └── 0020_class_subject_total_marks.sql  compatibility conversion to total_marks
+    ├── 0019_subjects_and_timetable.sql     subject catalog/assignments + weekdays/periods/timetable + RLS
+    ├── 0020_class_subject_total_marks.sql  compatibility conversion to total_marks
+    ├── 0021_student_attendance.sql         student attendance table + RLS
+    ├── 0022_attendance_holidays.sql        school-wide attendance calendar closures
+    ├── 0023_scoped_attendance_calendar.sql class/student-scoped calendar closures
+    ├── 0024_class_weekday_status.sql       explicit class-day Working/Weekend status
+    ├── 0025_employee_attendance.sql        employee schedules, records, imports, mappings, audit, RLS, RPC
+    └── 0026_remove_employee_department.sql removes unused employee department column
 ```
 
 ---
@@ -482,7 +530,7 @@ Bucket `student-photos` — for student profile photos.
 Bucket `student-attachments` — for student documents (birth cert, CNIC, results, etc.).
 
 ### Reserved (schema-ready, not built)
-teachers, parents, sections, attendance, exams, grades, subscriptions, plans — all FK-linked to `school_id`.
+teachers, parents, sections, exams, grades, subscriptions, plans — all FK-linked to `school_id` where tenant scoped.
 
 See `docs/database.md` for full DDL and `docs/roadmap.md` for the build order.
 
