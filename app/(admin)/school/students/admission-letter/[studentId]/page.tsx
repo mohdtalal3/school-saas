@@ -3,6 +3,7 @@ import { getSchoolSession } from "@/lib/auth/jwt";
 import { getStudentById } from "@/services/student.service";
 import { getSchoolById } from "@/services/school.service";
 import { AdmissionLetterPDFViewer } from "@/features/students/admission-letter-pdf-viewer";
+import { requireModule } from "@/lib/module-access";
 
 interface PageProps {
   params: Promise<{ studentId: string }>;
@@ -12,6 +13,7 @@ export default async function AdmissionLetterPage({ params }: PageProps) {
   const { studentId } = await params;
   const session = await getSchoolSession();
   if (!session?.schoolId) notFound();
+  await requireModule(session.schoolId, "students", { tabParam: "admission" });
 
   let student, school;
   try {

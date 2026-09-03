@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getSchoolSession } from "@/lib/auth/jwt";
 import { IdCardsClient } from "@/features/employees/id-cards-client";
+import { requireModule } from "@/lib/module-access";
 
 interface PageProps {
   searchParams: Promise<{
@@ -15,6 +16,8 @@ interface PageProps {
 export default async function IdCardsPage({ searchParams }: PageProps) {
   const session = await getSchoolSession();
   if (!session?.schoolId) notFound();
+
+  await requireModule(session.schoolId, "employees", { tabParam: "idcards" });
 
   const sp = await searchParams;
 

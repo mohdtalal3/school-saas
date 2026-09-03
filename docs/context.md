@@ -36,6 +36,7 @@ Built and working:
 - **Reusable class selectors** — class pickers across Subjects, Timetable, Students, Fees, promotion/import flows, ID-card filters, and shared directories are searchable, initially show 10 results, and reveal more in batches; existing All Classes, No Class, and intentional multi-class behavior is preserved
 - **Student Attendance** — daily class register with current-date default, Not Marked draft state, Mark All Present, explicit partial-save confirmation, present/absent/late/leave statuses, class-specific working weekdays, date-range vacation/closure calendar scoped to the school/classes/students, automatic student exemptions, student day-by-day report, class aggregate report, searchable class/student selection, Excel export, and browser Print / Save as PDF
 - **Employee Attendance** — separate sidebar module with daily employee register, punch times, designation/search/status filters, automatic late/early/worked/overtime calculations, manual overrides, finalization, audit history, configurable default/weekday/seasonal/date-range/exact-date schedules, student-style single-date and long-range closure calendar, compact and individual reports, Excel/print/PDF/copy actions, CSV/Excel biometric preview/import, ZKTeco-oriented column aliases, persistent machine mappings, import history, and safe undo. The project has no department model; employee attendance uses `employees.role` as designation.
+- **Module Settings (sidebar feature toggles)** — admin-configurable module visibility at `/school/settings/modules`: master switch per sidebar module (Employees, Students, Classes, Subjects, Timetable, Fees, Student Attendance, Employee Attendance) plus per-subtab switches. Disabled keys are stored in `schools.disabled_modules` (JSONB string array, missing key = enabled). Enforcement is two-level: the sidebar hides disabled modules/subtabs, and server-side page guards (`lib/module-access.ts` → `requireModule`) redirect deep links to the dashboard with a "Module unavailable" toast. A disabled parent module blocks all its subtabs. Dashboard and General Settings are not toggleable.
 
 Not yet built (Phase 2/3):
 - Teacher / Parent / Student portals (role cards exist in the login UI but show a "coming soon" toast)
@@ -128,6 +129,7 @@ npm run dev          # http://localhost:3000
 | `/school/settings/institute-profile` | Institute profile form + logo upload |
 | `/school/settings/account-settings` | Currency + timezone |
 | `/school/settings/rules-regulations` | Employee & student rules text (used in offer/admission letters) |
+| `/school/settings/modules` | Module Settings — enable/disable sidebar modules and subtabs (stored in `schools.disabled_modules`) |
 | `/school/employees` | Employee management — tabs: All Employees, Basic List, Manage Login, Job Offer, Attachments, ID Cards |
 | `/school/employees/[employeeId]` | Employee detail page (profile, attachments, actions) |
 | `/school/employees/id-cards` | ID card generation — All/Select mode, server-side search, customize theme, preview PDF in iframe, download |
@@ -204,7 +206,8 @@ app/
     │   ├── institute-profile/[schoolId]/route.ts       GET/PATCH (admin of that school)
     │   ├── institute-profile/[schoolId]/logo/route.ts  POST FormData → Supabase Storage
     │   ├── account-settings/[schoolId]/route.ts         GET/PATCH currency/timezone
-    │   └── rules-regulations/[schoolId]/route.ts        GET/PATCH employee_rules + student_rules
+    │   ├── rules-regulations/[schoolId]/route.ts        GET/PATCH employee_rules + student_rules
+    │   └── modules/[schoolId]/route.ts                 GET/PATCH disabled_modules (module visibility)
     ├── employees/
     │   ├── [schoolId]/route.ts                          GET list, POST create
     │   ├── [schoolId]/[employeeId]/route.ts             GET, PATCH, DELETE
@@ -243,7 +246,7 @@ components/
 ├── layout/master-navbar.tsx
 └── ui/                       button, input, label, select, card, avatar, dropdown-menu, textarea, separator, toast,
                                 dialog, tabs, pagination, directory-table, search-picker, searchable-select,
-                                searchable-multi-select, letter-search-tab
+                                searchable-multi-select, letter-search-tab, switch
 
 features/
 ├── auth/
@@ -251,7 +254,7 @@ features/
 │   └── school-login-form.tsx (OLD — superseded by login/, kept but unused)
 ├── admin/dashboard.tsx
 ├── master/{master-login-form,create-school-form,schools-list}.tsx
-├── settings/{institute-profile-form,account-settings-form,rules-regulations-form}.tsx
+├── settings/{institute-profile-form,account-settings-form,rules-regulations-form,module-settings-form}.tsx
 ├── employees/
 │   ├── employee-form.tsx          Add/edit employee form (RHF + Zod)
 │   ├── employee-management.tsx    Main page — tabs: All, Basic List, Manage Login, Job Offer, Attachments, ID Cards
@@ -337,6 +340,8 @@ lib/
 ├── env.ts                    Zod-validated env access
 ├── api-response.ts           ApiResponse type + AppError classes
 ├── auth/jwt.ts               create/get/set/clear master + school sessions
+├── modules.ts                Canonical module/subtab registry + disabled-key helpers (shared client/server)
+├── module-access.ts          Server-side module guard (requireModule → dashboard redirect)
 ├── employee-attendance-calculations.ts  Pure schedule/punch calculation helpers
 ├── utils.ts                  cn() (clsx+twMerge), formatDate, slugify, getInitials
 └── supabase/                 index, supabase-browser, supabase-server, supabase-service
@@ -344,7 +349,7 @@ lib/
 services/                     (business logic; no JSX)
 ├── auth.service.ts           verifyMasterCredentials, hashPassword, createSchoolAdmin, verifyAdminPassword, requireAdminById
 ├── school.service.ts         getAllSchools, getSchoolById, createSchool, updateSchool, deleteSchool
-├── settings.service.ts        getInstituteProfile, updateInstituteProfile, uploadSchoolLogo, getAccountSettings, updateAccountSettings
+├── settings.service.ts        getInstituteProfile, updateInstituteProfile, uploadSchoolLogo, getAccountSettings, updateAccountSettings, getModuleSettings, updateModuleSettings
 ├── employee.service.ts       getEmployees, getEmployeeById, createEmployee, updateEmployee, deleteEmployee
 ├── class.service.ts          getClasses, getClassById, createClass, updateClass, deleteClass
 ├── student.service.ts        getStudents (with searchFields), getStudentById, createStudent, updateStudent, deleteStudent,
@@ -394,7 +399,8 @@ supabase/
     ├── 0023_scoped_attendance_calendar.sql class/student-scoped calendar closures
     ├── 0024_class_weekday_status.sql       explicit class-day Working/Weekend status
     ├── 0025_employee_attendance.sql        employee schedules, records, imports, mappings, audit, RLS, RPC
-    └── 0026_remove_employee_department.sql removes unused employee department column
+    ├── 0026_remove_employee_department.sql removes unused employee department column
+    └── 0027_module_settings.sql           disabled_modules JSONB array on schools (sidebar feature toggles)
 ```
 
 ---
