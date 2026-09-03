@@ -320,6 +320,117 @@ export interface ClassAttendanceReport {
   stats: AttendanceStats;
 }
 
+// ── Employee Attendance ─────────────────────────────────────
+
+export type EmployeeAttendanceStatus = "present" | "late" | "absent" | "leave" | "short_leave" | "half_day";
+export type EmployeeAttendanceDraftStatus = EmployeeAttendanceStatus | "not_marked" | "weekly_off" | "holiday";
+export type EmployeeAttendanceSource = "automatic" | "manual" | "imported" | "import_edited";
+export type EmployeeScheduleType = "weekday" | "seasonal" | "date_range" | "date_override";
+export type EmployeeClosureType = "weekly_off" | "public_holiday" | "school_holiday" | "summer_holiday" | "winter_holiday" | "special_closure" | "event";
+
+export interface EmployeeAttendanceSettings {
+  id: string;
+  school_id: string;
+  check_in_start: string;
+  check_in_end: string;
+  duty_start: string;
+  check_out_start: string;
+  check_out_end: string;
+  duty_end: string;
+  short_leave_threshold_minutes: number;
+  half_day_threshold_minutes: number;
+  late_grace_minutes: number;
+  early_checkout_grace_minutes: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmployeeAttendanceSchedule {
+  id: string;
+  school_id: string;
+  name: string;
+  schedule_type: EmployeeScheduleType;
+  weekday: number | null;
+  start_date: string | null;
+  end_date: string | null;
+  is_working_day: boolean;
+  attendance_closed: boolean;
+  closure_type: EmployeeClosureType | null;
+  check_in_start: string | null;
+  check_in_end: string | null;
+  duty_start: string | null;
+  check_out_start: string | null;
+  check_out_end: string | null;
+  duty_end: string | null;
+  short_leave_threshold_minutes: number | null;
+  half_day_threshold_minutes: number | null;
+  late_grace_minutes: number | null;
+  early_checkout_grace_minutes: number | null;
+  priority: number;
+  note: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ResolvedEmployeeSchedule extends EmployeeAttendanceSettings {
+  date: string;
+  weekday: number;
+  schedule_id: string | null;
+  schedule_name: string;
+  schedule_type: EmployeeScheduleType | "default";
+  is_working_day: boolean;
+  attendance_closed: boolean;
+  closure_type: EmployeeClosureType | null;
+  note: string | null;
+}
+
+export interface EmployeeAttendanceRecord {
+  id: string;
+  school_id: string;
+  employee_id: string;
+  attendance_date: string;
+  scheduled_check_in: string | null;
+  scheduled_check_out: string | null;
+  actual_check_in: string | null;
+  actual_check_out: string | null;
+  status: EmployeeAttendanceStatus;
+  late_minutes: number;
+  early_leave_minutes: number;
+  worked_minutes: number | null;
+  overtime_minutes: number;
+  source: EmployeeAttendanceSource;
+  is_manual_override: boolean;
+  requires_review: boolean;
+  review_reason: string | null;
+  notes: string | null;
+  import_job_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DailyEmployeeAttendanceRow {
+  employee_id: string;
+  employee_code: string | null;
+  employee_name: string;
+  designation: string;
+  photo_url: string | null;
+  scheduled_check_in: string | null;
+  scheduled_check_out: string | null;
+  actual_check_in: string | null;
+  actual_check_out: string | null;
+  late_minutes: number;
+  early_leave_minutes: number;
+  worked_minutes: number | null;
+  overtime_minutes: number;
+  status: EmployeeAttendanceDraftStatus;
+  source: EmployeeAttendanceSource | null;
+  is_manual_override: boolean;
+  requires_review: boolean;
+  review_reason: string | null;
+  notes: string;
+}
+
 // ── Student Attachments ───────────────────────────────────────
 
 export interface StudentAttachment {

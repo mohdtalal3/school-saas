@@ -12,7 +12,7 @@ A production-grade, **multi-tenant School ERP SaaS** — one Postgres database s
 
 Single Next.js codebase hosts both the UI (App Router) and the backend (API Route Handlers). **No separate backend service, no Prisma** — raw SQL migrations + Supabase JS SDK only.
 
-### Current phase: Phase 2 (IN PROGRESS — Employee module + PDF generation complete)
+### Current phase: Phase 2 (IN PROGRESS — Employee, finance, scheduling, and attendance modules implemented)
 
 Built and working:
 - Master login (env-credential, **hidden endpoint**) + Master dashboard + Create-school flow
@@ -35,10 +35,11 @@ Built and working:
 - **Timetable** — explicit per-class Working/Weekend weekday settings, searchable multi-class weekday/period duplication, an editable timetable grid supporting breaks, subjects, active employee teachers, apply-to-weekdays, and read-only preview by class or teacher
 - **Reusable class selectors** — class pickers across Subjects, Timetable, Students, Fees, promotion/import flows, ID-card filters, and shared directories are searchable, initially show 10 results, and reveal more in batches; existing All Classes, No Class, and intentional multi-class behavior is preserved
 - **Student Attendance** — daily class register with current-date default, Not Marked draft state, Mark All Present, explicit partial-save confirmation, present/absent/late/leave statuses, class-specific working weekdays, date-range vacation/closure calendar scoped to the school/classes/students, automatic student exemptions, student day-by-day report, class aggregate report, searchable class/student selection, Excel export, and browser Print / Save as PDF
+- **Employee Attendance** — separate sidebar module with daily employee register, punch times, designation/search/status filters, automatic late/early/worked/overtime calculations, manual overrides, finalization, audit history, configurable default/weekday/seasonal/date-range/exact-date schedules, student-style single-date and long-range closure calendar, compact and individual reports, Excel/print/PDF/copy actions, CSV/Excel biometric preview/import, ZKTeco-oriented column aliases, persistent machine mappings, import history, and safe undo. The project has no department model; employee attendance uses `employees.role` as designation.
 
 Not yet built (Phase 2/3):
 - Teacher / Parent / Student portals (role cards exist in the login UI but show a "coming soon" toast)
-- Employee attendance, attendance audit history, Exams, Teachers/Parents CRUD
+- Exams, Teachers/Parents CRUD
 - Subscription billing, notifications, i18n, RBAC
 
 ---
@@ -114,7 +115,7 @@ npm run dev          # http://localhost:3000
   LANGUAGE plpgsql SECURITY DEFINER AS $$ BEGIN EXECUTE query; END; $$;
   ```
   then re-run `npm run db:migrate`.
-- **Status as of last session:** migrations were written but their successful application was not confirmed end-to-end (network from the dev sandbox to Supabase was blocked). **Verify tables `schools` and `school_admins` exist in the Supabase dashboard before relying on login.**
+- **Status:** migrations through `0026_remove_employee_department.sql` have been applied in the development Supabase project. Re-run `npm run db:migrate` after pulling new migrations in another environment.
 
 ### URL map
 
@@ -137,6 +138,8 @@ npm run dev          # http://localhost:3000
 | `/school/fees` | Fee management — tabs: Fee Particulars, Invoice Generator, Collect Fees, Search Invoices, Fee Defaulters, Fee Report |
 | `/school/subjects` | Subject management — tabs: Create Subjects, Assign Subjects |
 | `/school/timetable` | Timetable management — tabs: Weekdays, Time Periods, Create Timetable, Preview Timetable |
+| `/school/attendance?tab=students` | Student Attendance daily register; Student Report and Class Report are sibling links inside the separate Student Attendance sidebar dropdown |
+| `/school/attendance?tab=employees` | Employee Attendance daily register; Calendar, Settings, Monthly Report, Employee Report, and Import History are sibling links inside the separate Employee Attendance sidebar dropdown |
 | `/master-login` | **Hidden** — type URL directly. Master super-admin login (creates/manages schools). Not linked anywhere in the UI. |
 | `/master` | Master dashboard |
 | `/master/create-school` | Create school + first admin |
@@ -381,7 +384,7 @@ Only Admin has a backend. Employee/Student, Sign Up, and Forgot-password show in
 
 - **`app/(admin)/layout.tsx`** is a Server Component: validates `school_session` (role `admin`), prefetches the school record, renders `<AdminShell schoolId initialSchool>`. Unauthenticated → redirect `/school-login`.
 - **`AdminShell`** (`components/layout/admin-shell.tsx`) is a client context provider: `school`, `sidebarOpen`, `setSidebarOpen`, `logout`. `useAdminShell()` is the hook features consume (e.g. settings forms read `school` for `initialData`).
-- **Sidebar** (`admin-sidebar.tsx`): dark theme, mobile overlay (AnimatePresence), active-link highlight, and collapsible module groups. The viewport-height shell keeps the brand header and Logout action fixed while the navigation list scrolls independently. General Settings includes the dedicated `/school/settings/calendar` page.
+- **Sidebar** (`admin-sidebar.tsx`): dark theme, mobile overlay (AnimatePresence), active-link highlight, and collapsible module groups. Student Attendance and Employee Attendance are independent top-level dropdowns, not nested under a shared Attendance parent. The viewport-height shell keeps the brand header and Logout action fixed while the navigation list scrolls independently. General Settings includes the dedicated `/school/settings/calendar` page.
 - **Topbar** (`admin-topbar.tsx`): breadcrumb + school badge (logo) + admin avatar + mobile menu button.
 
 ---
@@ -510,9 +513,9 @@ See `docs/architecture.md` §Search Pattern Consistency and §Page Container & L
 
 ## 11. Known issues & technical debt
 
-- **DB migrations not verified applied.** Run `npm run db:migrate` and confirm `schools` + `school_admins` exist in Supabase before testing login. If `exec_sql` RPC is missing, create it (see §4) then re-run.
+- **Migration hygiene.** Migrations through `0026_remove_employee_department.sql` are applied in the development Supabase project. Run `npm run db:migrate` after pulling new migrations in any other environment; if `exec_sql` RPC is missing, create it once (see §4).
 - **Pre-existing TypeScript errors** (not introduced by recent UI work, don't block `next dev`, but will fail `next build` until fixed):
-  - `components/layout/admin-sidebar.tsx` — *fixed* (removed unused `parent` field).
+  - `features/settings/institute-profile-form.tsx` — `logo_url` is referenced outside the current form schema/watch typing.
   - `lib/auth/jwt.ts:30` — JWT payload cast to `Record<string, unknown>` type overlap.
   - `lib/supabase/supabase-server.ts` — implicit `any` on `@supabase/ssr` cookie callback params.
   - `services/auth.service.ts` / `services/school.service.ts` — Supabase generic types infer as `never[]` (missing `Database` generic on the service client). Fix: generate/ pass a typed `Database` interface to `createClient<Database>`.
@@ -647,6 +650,16 @@ See `docs/architecture.md` §Search Pattern Consistency and §Page Container & L
 - `GET /api/attendance/[schoolId]/reports/student?studentId=&startDate=&endDate=` — day-by-day student report and totals
 - `GET /api/attendance/[schoolId]/reports/class?classId=&startDate=&endDate=` — per-student class aggregates and class totals
 - `GET|POST|PATCH|DELETE /api/attendance/[schoolId]/calendar` — month-range holiday listing and school-wide closure management
+- `GET|PUT /api/attendance/[schoolId]/employees/daily` — resolved employee schedule plus filtered active roster; save/finalize server-calculated attendance
+- `GET|PUT /api/attendance/[schoolId]/employees/configuration` — default employee timing and thresholds
+- `GET|POST|DELETE /api/attendance/[schoolId]/employees/schedules` — weekday, seasonal, special-range, and exact-date rules
+- `GET /api/attendance/[schoolId]/employees/calendar?month=` — per-date schedule/closure state for the employee attendance calendar
+- `GET /api/attendance/[schoolId]/employees/reports/monthly?month=` — compact employee aggregates
+- `GET /api/attendance/[schoolId]/employees/reports/employee?employeeId=&month=` — individual daily breakdown
+- `GET /api/attendance/[schoolId]/employees/audit?employeeId=&date=` — attendance change history
+- `GET|POST|DELETE /api/attendance/[schoolId]/employees/import` — import history/detail, preview/commit, and safe undo
+- `GET /api/attendance/[schoolId]/employees/import/sample` — styled Excel sample and instructions
+- `GET|POST /api/attendance/[schoolId]/employees/mappings` — biometric machine-to-employee mappings
 
 ---
 
@@ -669,7 +682,7 @@ See `docs/architecture.md` §Search Pattern Consistency and §Page Container & L
 
 1. **Verify migrations applied**, then do a cleanup pass to clear the pre-existing `tsc` errors so `npm run build` passes.
 2. **Sections** CRUD (assign section teachers), then dedicated **Teachers** and **Parents**. Timetable currently selects teachers from active employees.
-3. Extend student attendance with sections, holidays/calendar, and teacher-portal permissions; then build **Exams & Grades** (mark entry, report cards).
+3. Extend attendance with sections, historical employment/enrollment periods, and teacher-portal permissions; then build **Exams & Grades** (mark entry, report cards).
 4. Then Phase 3: subscriptions/billing (Stripe), role portals, notifications, reports.
 
 See `docs/roadmap.md` for the full plan.

@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-Phase 2 is in progress. Employee management, classes, students, fees, subject management, timetable management, admin-side student attendance, and scoped attendance calendars are implemented. Sections, dedicated Teacher/Parent CRUD, employee attendance, and exams remain pending.
+Phase 2 is in progress. Employee management, classes, students, fees, subject management, timetable management, student attendance, scoped calendars, and employee attendance are implemented. Sections, dedicated Teacher/Parent CRUD, and exams remain pending.
 
 ## Established student attendance decisions
 
@@ -20,6 +20,21 @@ Phase 2 is in progress. Employee management, classes, students, fees, subject ma
 - Holiday changes do not destructively delete attendance rows; removing a holiday can reveal preserved historical records again.
 - Calendar Settings lives under General Settings at `/school/settings/calendar`; the old attendance calendar tab redirects to this route.
 - The admin sidebar uses a viewport-height flex shell with an independently scrollable navigation area so expanded groups never hide lower navigation or Logout.
+
+## Established employee attendance decisions
+
+- Student Attendance and Employee Attendance are separate top-level sidebar dropdowns with their own child pages. There is no shared Attendance parent, nested sub-submenu, or page-level attendance tab strip. Existing student daily/report URLs remain functional.
+- Employee schedule resolution is exact date override → special date-range → seasonal → weekday → school default. Resolved duty start/end are snapshotted on each attendance row.
+- `employee_attendance` stores only working-day statuses; missing rows mean Not Marked. Weekly offs, holidays, and closed days are resolved from schedules and create no rows.
+- Automatic calculation is server-owned. Grace controls classification, while reports retain the full difference from scheduled duty start/end. Minute calculations never go negative and support overnight shifts.
+- A filtered Finalize Day operation creates Absent for active joined employees who truly have no record, while preserving existing attendance outside the loaded filter.
+- Manual status changes, punch edits, imports, and undo operations write previous/new audit snapshots with administrator ID, timestamp, and reason.
+- Biometric CSV/Excel preview is server-validated, groups multiple punches by employee/date, and uses earliest/latest punches. Machine mappings persist for future ZKTeco-style files.
+- Import conflict handling supports safe merge-missing (default), skip, and replace. Commit uses `commit_employee_attendance_import` as one Postgres transaction. Undo restores prior rows/removes new ones and preserves later manual edits.
+- Monthly reports stop at today for the current month and at month-end for past months; employee working-day counts begin no earlier than `date_of_joining`.
+- Employees use `role` as their designation; the project has no department model or employee attendance department filter.
+- Employee Calendar is where admins create named single-day or long-range no-attendance rules. It now mirrors the student calendar style with compact closure cards/default weekly-off cells and does not show written per-cell status counts. Settings remains responsible for timing and working-schedule configuration.
+- The current schema lacks an employment end-date/history table, so inactive-employee reports can be filtered but cannot reconstruct the exact historical deactivation date.
 
 ## Established subject and timetable decisions
 
@@ -39,4 +54,4 @@ Phase 2 is in progress. Employee management, classes, students, fees, subject ma
 
 ## Operational note
 
-Migrations `0019_subjects_and_timetable.sql` through `0024_class_weekday_status.sql` must be applied with `npm run db:migrate` before using the scheduling and attendance modules against Supabase. Migration `0024` backfills existing class-day statuses from their school weekday defaults.
+Migrations `0019_subjects_and_timetable.sql` through `0026_remove_employee_department.sql` must be applied with `npm run db:migrate` before using scheduling and attendance. Migration `0024` backfills class-day statuses; migration `0025` adds employee attendance schedules/records, imports, mappings, audit history, RLS, and the transactional import RPC; migration `0026` removes the unused employee department field.

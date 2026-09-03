@@ -95,6 +95,7 @@ A single Next.js 15 (App Router) application that hosts:
   - `subject.service.ts` owns subject defaults, catalog CRUD, class subject total marks, and safe class-to-class duplication.
   - `timetable.service.ts` owns weekdays, class weekday assignments, per-day periods, duplication, and timetable entry validation/upserts.
   - `attendance.service.ts` owns daily attendance snapshots, class-specific school-day resolution, scoped vacation/holiday settings, and student/class range aggregation. Missing database rows represent Not Marked; only finalized statuses are stored. Each `class_weekdays` row explicitly records whether that weekday is working or weekend/off for that class. Without any class configuration, `weekdays.is_weekend` is the compatibility fallback. School, class, and student calendar scopes are evaluated by both daily saves and reports.
+  - `employee-attendance.service.ts` owns employee schedule precedence, daily registers, server-side punch calculations, audit writes, calendar summaries, and monthly/detail reports. `employee-attendance-import.service.ts` owns CSV/Excel normalization, employee/machine matching, preview validation, transactional commit, history, and safe undo.
 - Errors thrown as `AppError` subclasses; the API layer converts them to JSON responses.
 
 ### 4. Data Layer (`lib/supabase`)
@@ -177,7 +178,7 @@ Single database, shared schema, **school_id** discriminator everywhere.
 
 ### Sidebar Dropdown Groups
 
-The admin sidebar uses collapsible groups for modules with multiple sub-views (Students, Employees, Fees, Subjects, Timetable, Attendance, and Settings). Its header and logout action remain fixed while the navigation region scrolls independently within the viewport. Each group:
+The admin sidebar uses collapsible groups for modules with multiple sub-views (Students, Employees, Fees, Subjects, Timetable, Student Attendance, Employee Attendance, and Settings). Its header and logout action remain fixed while the navigation region scrolls independently within the viewport. Each group:
 
 - Has a parent button that toggles open/close (Framer Motion animated).
 - Contains sub-items that navigate via URL query params (e.g., `/school/students?tab=family`).
@@ -193,7 +194,7 @@ Tabs are no longer managed by local React state. Instead:
 - Content is conditionally rendered based on the tab value.
 - This enables deep-linking, browser back/forward, and bookmarkable views.
 - Subjects use `/school/subjects?tab=create|assign`; Timetable uses `/school/timetable?tab=weekdays|periods|create|preview`.
-- Attendance uses `/school/attendance?tab=students|student-report|class-report`; class-report student rows deep-link to `student-report&studentId=<id>`.
+- Student Attendance and Employee Attendance are separate top-level sidebar dropdowns. Their child pages are navigated directly beneath each dropdown rather than through a shared Attendance parent, nested sub-submenus, or page-level tab strip. Existing student report URLs (`student-report`, `class-report`) remain compatible. Employee subviews use `view=daily|calendar|settings|monthly|detail|imports`.
 - Calendar Settings is a General Settings page at `/school/settings/calendar`; the former attendance calendar URL redirects there for compatibility.
 
 ### Subject and Timetable Model
@@ -206,6 +207,17 @@ Tabs are no longer managed by local React state. Instead:
 - `TimetableGrid` is shared by the editable builder and read-only class/teacher previews, allowing later teacher and parent portals to reuse the same visual model.
 - `SearchableMultiSelect` provides searched multi-class targeting for duplication flows and screens that intentionally allow several class filters, such as student ID cards.
 - `SearchableSelect` is the shared single-value class picker across scheduling, students, fees, imports, promotion, and directory filters. Special options such as `All Classes` and `No class` remain screen-owned options rather than hardcoded component behavior. Both searchable select components show 10 options initially and reveal further results in batches of 10.
+
+### Employee Attendance Model
+
+- Default timing and thresholds are stored once per school; they are never hardcoded into attendance records.
+- Schedule rules support `weekday`, `seasonal`, `date_range`, and `date_override`. Resolution order is exact date → special date range → seasonal → weekday → default.
+- Daily attendance snapshots the resolved duty start/end. Automatic calculation is centralized in `lib/employee-attendance-calculations.ts`; manual overrides remain explicit and audited.
+- Holidays, weekly offs, closures, and event days are represented by non-working schedule rules and never create employee attendance rows.
+- The Employee Calendar owns named single-date and long-range closures such as public holidays, summer/winter holidays, events, and special closures. It follows the same visual language as the student calendar: compact off-day cards, default weekly-off cells, and no written attendance-status count grid inside date cells. Timing schedules remain configurable independently.
+- Missing punches remain Not Marked until finalization. Finalization creates Absent only for active, joined employees without an existing row; filtered views do not overwrite existing records outside the loaded filter.
+- Biometric preview and commit re-parse and calculate on the server. `commit_employee_attendance_import(...)` performs the import job, conflict handling, attendance upserts, import-row persistence, and audit writes in one Postgres transaction.
+- Import undo restores replaced rows or removes newly imported rows. Later manual/import-edited audit events cause undo to preserve those records.
 
 ### Suspense Boundaries
 

@@ -35,6 +35,8 @@ import {
   Clock3,
   CalendarRange,
   ClipboardCheck,
+  FileClock,
+  TableProperties,
   UserRoundSearch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -104,10 +106,19 @@ const timetableSubItems: SidebarSubItem[] = [
   { label: "Preview Timetable", icon: Search, tab: "preview" },
 ];
 
-const attendanceSubItems: SidebarSubItem[] = [
-  { label: "Student Attendance", icon: ClipboardCheck, tab: "students" },
-  { label: "Student Report", icon: UserRoundSearch, tab: "student-report" },
-  { label: "Class Report", icon: BarChart3, tab: "class-report" },
+const studentAttendanceItems = [
+  { label: "Daily Attendance", icon: ClipboardCheck, href: "/school/attendance?tab=students", tab: "students" },
+  { label: "Student Report", icon: UserRoundSearch, href: "/school/attendance?tab=student-report", tab: "student-report" },
+  { label: "Class Report", icon: BarChart3, href: "/school/attendance?tab=class-report", tab: "class-report" },
+];
+
+const employeeAttendanceItems = [
+  { label: "Daily Attendance", icon: Clock3, view: "daily" },
+  { label: "Calendar", icon: CalendarDays, view: "calendar" },
+  { label: "Settings", icon: CalendarRange, view: "settings" },
+  { label: "Monthly Report", icon: TableProperties, view: "monthly" },
+  { label: "Employee Report", icon: UserRoundSearch, view: "detail" },
+  { label: "Import History", icon: FileClock, view: "imports" },
 ];
 
 interface AdminSidebarProps {
@@ -121,6 +132,7 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentTab = searchParams.get("tab");
+  const currentView = searchParams.get("view");
 
   // Keep groups open by default when you're already inside them,
   // so the active sub-item is visible on initial load.
@@ -138,7 +150,9 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
   );
   const [subjectsOpen, setSubjectsOpen] = React.useState(pathname?.startsWith("/school/subjects") ?? false);
   const [timetableOpen, setTimetableOpen] = React.useState(pathname?.startsWith("/school/timetable") ?? false);
-  const [attendanceOpen, setAttendanceOpen] = React.useState(pathname?.startsWith("/school/attendance") ?? false);
+  const attendanceRoute = pathname?.startsWith("/school/attendance") ?? false;
+  const [studentAttendanceOpen, setStudentAttendanceOpen] = React.useState(attendanceRoute && currentTab !== "employees");
+  const [employeeAttendanceOpen, setEmployeeAttendanceOpen] = React.useState(attendanceRoute && currentTab === "employees");
 
   React.useEffect(() => {
     // Auto-expand if you navigate into a sub-page elsewhere.
@@ -148,8 +162,11 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
     if (pathname?.startsWith("/school/fees")) setFeesOpen(true);
     if (pathname?.startsWith("/school/subjects")) setSubjectsOpen(true);
     if (pathname?.startsWith("/school/timetable")) setTimetableOpen(true);
-    if (pathname?.startsWith("/school/attendance")) setAttendanceOpen(true);
-  }, [pathname]);
+    if (pathname?.startsWith("/school/attendance")) {
+      if (currentTab === "employees") setEmployeeAttendanceOpen(true);
+      else setStudentAttendanceOpen(true);
+    }
+  }, [pathname, currentTab]);
 
   const settingsActive = pathname?.startsWith("/school/settings") ?? false;
   const employeesActive = pathname?.startsWith("/school/employees") ?? false;
@@ -296,7 +313,9 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
 
           <SidebarTabGroup label="Timetable" icon={CalendarRange} open={timetableOpen} setOpen={setTimetableOpen} active={timetableActive} currentTab={currentTab} defaultTab="weekdays" href="/school/timetable" items={timetableSubItems} onClose={onClose} />
 
-          <SidebarTabGroup label="Attendance" icon={ClipboardCheck} open={attendanceOpen} setOpen={setAttendanceOpen} active={attendanceActive} currentTab={currentTab} defaultTab="students" href="/school/attendance" items={attendanceSubItems} onClose={onClose} />
+          <StudentAttendanceSidebarGroup open={studentAttendanceOpen} setOpen={setStudentAttendanceOpen} active={attendanceActive && currentTab !== "employees"} currentTab={currentTab} onClose={onClose} />
+
+          <EmployeeAttendanceSidebarGroup open={employeeAttendanceOpen} setOpen={setEmployeeAttendanceOpen} active={attendanceActive && currentTab === "employees"} currentView={currentView} onClose={onClose} />
 
           {/* Classes */}
           <Link
@@ -520,6 +539,26 @@ function SidebarTabGroup({ label, icon: Icon, open, setOpen, active, currentTab,
   active: boolean; currentTab: string | null; defaultTab: string; href: string; items: SidebarSubItem[]; onClose: () => void;
 }) {
   return <><button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className={cn("group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors", active ? "bg-sidebar-accent text-white" : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white")}><Icon className="h-4 w-4" /><span className="flex-1 text-left">{label}</span><ChevronDown className={cn("h-4 w-4 transition-transform duration-200", open && "rotate-180")} /></button><AnimatePresence initial={false}>{open && <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden"><div className="ml-2 mt-1 space-y-1 border-l border-sidebar-border/60 pb-1 pl-2">{items.map((item) => { const ItemIcon = item.icon; const itemActive = active && (currentTab === item.tab || (!currentTab && item.tab === defaultTab)); return <Link key={item.tab} href={`${href}?tab=${item.tab}`} onClick={onClose} className={cn("group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors", itemActive ? "bg-sidebar-accent text-white" : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white")}><ItemIcon className="h-4 w-4" /><span className="flex-1">{item.label}</span>{itemActive && <ChevronRight className="h-4 w-4" />}</Link>; })}</div></motion.div>}</AnimatePresence></>;
+}
+
+function StudentAttendanceSidebarGroup({ open, setOpen, active, currentTab, onClose }: {
+  open: boolean;
+  setOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  active: boolean;
+  currentTab: string | null;
+  onClose: () => void;
+}) {
+  return <><button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-controls="student-attendance-group" className={cn("group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors", active ? "bg-sidebar-accent text-white" : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white")}><ClipboardCheck className="h-4 w-4" /><span className="flex-1 text-left">Student Attendance</span><ChevronDown className={cn("h-4 w-4 transition-transform duration-200", open && "rotate-180")} /></button><AnimatePresence initial={false}>{open && <motion.div id="student-attendance-group" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden"><div className="ml-2 mt-1 space-y-1 border-l border-sidebar-border/60 pb-1 pl-2">{studentAttendanceItems.map((item) => { const Icon = item.icon; const itemActive = active && (currentTab === item.tab || (!currentTab && item.tab === "students")); return <Link key={item.tab} href={item.href} onClick={onClose} className={cn("group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors", itemActive ? "bg-sidebar-accent text-white" : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white")}><Icon className="h-4 w-4" /><span className="flex-1">{item.label}</span>{itemActive && <ChevronRight className="h-4 w-4" />}</Link>; })}</div></motion.div>}</AnimatePresence></>;
+}
+
+function EmployeeAttendanceSidebarGroup({ open, setOpen, active, currentView, onClose }: {
+  open: boolean;
+  setOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  active: boolean;
+  currentView: string | null;
+  onClose: () => void;
+}) {
+  return <><button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-controls="employee-attendance-group" className={cn("group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors", active ? "bg-sidebar-accent text-white" : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white")}><UsersRound className="h-4 w-4" /><span className="flex-1 text-left">Employee Attendance</span><ChevronDown className={cn("h-4 w-4 transition-transform duration-200", open && "rotate-180")} /></button><AnimatePresence initial={false}>{open && <motion.div id="employee-attendance-group" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden"><div className="ml-2 mt-1 space-y-1 border-l border-sidebar-border/60 pb-1 pl-2">{employeeAttendanceItems.map((item) => { const Icon = item.icon; const itemActive = active && (currentView === item.view || (!currentView && item.view === "daily")); return <Link key={item.view} href={`/school/attendance?tab=employees&view=${item.view}`} onClick={onClose} className={cn("group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors", itemActive ? "bg-sidebar-accent text-white" : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white")}><Icon className="h-4 w-4" /><span className="flex-1">{item.label}</span>{itemActive && <ChevronRight className="h-4 w-4" />}</Link>; })}</div></motion.div>}</AnimatePresence></>;
 }
 
 export { type SidebarItem };

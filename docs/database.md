@@ -339,6 +339,17 @@ CREATE TABLE student_attendance (
 
 School/class events block the entire applicable register. Student events exempt only those students while attendance remains available to their classmates. All applicable events are excluded from report calculations. Migrations: `0022_attendance_holidays.sql` and `0023_scoped_attendance_calendar.sql`.
 
+### Employee attendance tables
+
+- `employee_attendance_settings`: one configurable default timing/threshold row per school.
+- `employee_attendance_schedules`: weekday, seasonal, date-range, and exact-date working/closed rules with optional timing/threshold overrides.
+- `employee_attendance`: one record per school/employee/date with scheduled and actual punches, calculated minutes, status, source, override/review flags, actor IDs, and import linkage.
+- `employee_attendance_audit`: previous/new JSON snapshots, action, actor, timestamp, and reason.
+- `employee_attendance_import_jobs` and `employee_attendance_import_rows`: import summary and row-level traceability.
+- `biometric_employee_mappings`: persistent unique machine identifier to employee mapping per school.
+
+`employee_attendance` enforces `UNIQUE (school_id, employee_id, attendance_date)`. Persisted working-day statuses are Present, Late, Absent, Leave, Short Leave, and Half Day; Not Marked remains a missing row, while Holiday and Weekly Off are resolved calendar states. Employee attendance does not store or filter by department; `employees.role` is the designation field used by filters and reports. All tables have tenant RLS. Migration `0025_employee_attendance.sql` also defines the service-role-only transactional import RPC, and migration `0026_remove_employee_department.sql` removes the unused department column.
+
 ---
 
 ## Future-Ready Tables (Schema Reserved)
@@ -422,12 +433,14 @@ supabase/
     ├── 0016_collect_fee_allocations.sql     ✅ Applied — per-particular payment allocations (paid_amount, status on InvoiceParticular)
     ├── 0017_per_particular_payments.sql     ✅ Applied — per-particular payment tracking in JSONB particulars
     ├── 0018_annual_dues_tracking.sql        ✅ Applied — annual_dues_original column on students (tracks initial annual dues for the year, caps reversal on payment deletion)
-    ├── 0019_subjects_and_timetable.sql      📝 Written — subjects, class assignments, weekdays, periods, timetable entries; run db:migrate
-    ├── 0020_class_subject_total_marks.sql   📝 Written — compatibility rename/conversion from subject_number to total_marks
-    ├── 0021_student_attendance.sql          📝 Written — student attendance, indexes, tenant RLS, updated_at trigger
-    ├── 0022_attendance_holidays.sql         📝 Written — school-wide holidays/closures, tenant RLS, date index
-    ├── 0023_scoped_attendance_calendar.sql  📝 Written — date ranges plus class/student holiday targets and RLS
-    └── 0024_class_weekday_status.sql         📝 Written — per-class Working/Weekend status and compatibility backfill
+    ├── 0019_subjects_and_timetable.sql      ✅ Applied — subjects, class assignments, weekdays, periods, timetable entries, RLS
+    ├── 0020_class_subject_total_marks.sql   ✅ Applied — compatibility rename/conversion from subject_number to total_marks
+    ├── 0021_student_attendance.sql          ✅ Applied — student attendance, indexes, tenant RLS, updated_at trigger
+    ├── 0022_attendance_holidays.sql         ✅ Applied — school-wide holidays/closures, tenant RLS, date index
+    ├── 0023_scoped_attendance_calendar.sql  ✅ Applied — date ranges plus class/student holiday targets and RLS
+    ├── 0024_class_weekday_status.sql         ✅ Applied — per-class Working/Weekend status and compatibility backfill
+    ├── 0025_employee_attendance.sql          ✅ Applied — employee schedules, attendance, imports, mappings, audit, RLS, and import RPC
+    └── 0026_remove_employee_department.sql   ✅ Applied — removes the unused department field; employee role is the designation
 ```
 
 Run: `npm run db:migrate`
@@ -454,6 +467,11 @@ CREATE INDEX idx_attendance_holidays_school_date ON attendance_holidays(school_i
 CREATE INDEX idx_attendance_holiday_classes_school_class ON attendance_holiday_classes(school_id, class_id);
 CREATE INDEX idx_attendance_holiday_students_school_student ON attendance_holiday_students(school_id, student_id);
 CREATE INDEX idx_class_weekdays_school_class_status ON class_weekdays(school_id, class_id, is_weekend);
+CREATE INDEX idx_employee_attendance_school_date ON employee_attendance(school_id, attendance_date);
+CREATE INDEX idx_employee_attendance_employee_date ON employee_attendance(school_id, employee_id, attendance_date);
+CREATE INDEX idx_employee_schedules_resolution ON employee_attendance_schedules(school_id, schedule_type, start_date, end_date, weekday, is_active);
+CREATE INDEX idx_employee_import_jobs_school_created ON employee_attendance_import_jobs(school_id, created_at DESC);
+CREATE INDEX idx_employee_attendance_audit_record ON employee_attendance_audit(school_id, employee_id, attendance_date, changed_at DESC);
 CREATE INDEX idx_fee_particulars_school_id ON fee_particulars(school_id);
 CREATE INDEX idx_fee_particulars_sort_order ON fee_particulars(school_id, sort_order);
 CREATE INDEX idx_fee_invoices_school_id ON fee_invoices(school_id);

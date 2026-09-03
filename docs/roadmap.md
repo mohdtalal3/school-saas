@@ -134,7 +134,13 @@
 - ✅ Student vacation exemptions without blocking classmates’ attendance
 - ✅ Weekend and holiday exclusion from attendance totals and percentages
 - ⏳ Section-aware attendance and historical enrollment roster
-- ⏳ Employee attendance
+- ✅ Attendance navigation split into separate top-level Student Attendance and Employee Attendance sidebar dropdowns without a shared Attendance parent or page-level attendance tab strip
+- ✅ Daily employee attendance with date/designation/search/status filters, punches, manual statuses, notes, review flags, finalization, and audit history
+- ✅ Configurable default timing, grace periods, short-leave/half-day thresholds, and weekday/seasonal/special-range/exact-date schedule precedence
+- ✅ Employee calendar with working days, weekly offs, named single-day or long-range closures, custom schedules, student-calendar-style off-day cards, and daily drill-down
+- ✅ Monthly compact and individual employee reports with current/past month boundaries, totals, search/sort/column controls, Excel, copy, and Print / Save as PDF
+- ✅ CSV/Excel biometric preview and transactional import with multiple-punch aggregation, ZKTeco-oriented aliases, unmatched mapping, safe conflict strategies, history/detail, and undo protection for later edits
+- ✅ Employee attendance tenant RLS, duplicate prevention, server calculations, source tracking, and immutable audit snapshots
 - ⏳ Teacher-portal attendance permissions and workflow
 
 ### 2.11 Exams & Grades (PENDING)
