@@ -8,6 +8,7 @@ import {
   getInvoices,
 } from "@/services/fee-invoice.service";
 import { FeeInvoicePDFViewer } from "@/features/fees/fee-invoice-pdf-viewer";
+import { requireModule } from "@/lib/module-access";
 import type { FeeInvoice } from "@/types/school.types";
 
 interface PageProps {
@@ -24,6 +25,7 @@ export default async function FeeInvoicePdfPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const session = await getSchoolSession();
   if (!session?.schoolId) notFound();
+  await requireModule(session.schoolId, "fees", { tabParam: "invoices" });
 
   let invoices: FeeInvoice[] = [];
   let school;

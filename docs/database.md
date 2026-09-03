@@ -40,10 +40,13 @@ CREATE TABLE schools (
   timezone        TEXT DEFAULT 'UTC',
   employee_rules  TEXT,
   student_rules   TEXT,
+  disabled_modules JSONB NOT NULL DEFAULT '[]',  -- sidebar feature toggles: array of disabled module/subtab keys; missing key = enabled
   created_at    TIMESTAMPTZ DEFAULT now(),
   updated_at    TIMESTAMPTZ DEFAULT now()
 );
 ```
+
+- `disabled_modules` is validated by a CHECK constraint to be a JSON array. Keys are defined in `lib/modules.ts` (e.g. `"attendance.students"` disables the whole Student Attendance module; `"attendance.students.daily"` disables only the daily register subtab) and are Zod-validated against the registry in the API route. Managed from `/school/settings/modules` via `PATCH /api/settings/modules/[schoolId]`. Migration `0027_module_settings.sql`.
 
 ### `school_admins`
 
@@ -438,7 +441,8 @@ supabase/
     ├── 0023_scoped_attendance_calendar.sql  ✅ Applied — date ranges plus class/student holiday targets and RLS
     ├── 0024_class_weekday_status.sql         ✅ Applied — per-class Working/Weekend status and compatibility backfill
     ├── 0025_employee_attendance.sql          ✅ Applied — employee schedules, attendance, imports, mappings, audit, RLS, and import RPC
-    └── 0026_remove_employee_department.sql   ✅ Applied — removes the unused department field; employee role is the designation
+    ├── 0026_remove_employee_department.sql   ✅ Applied — removes unused department field; employee role is the designation
+    └── 0027_module_settings.sql              ✅ Applied — disabled_modules JSONB array on schools (sidebar feature toggles)
 ```
 
 Run: `npm run db:migrate`

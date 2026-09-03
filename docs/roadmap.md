@@ -168,6 +168,15 @@
 - ⏳ Fee structure per class
 - ⏳ Outstanding reports
 
+### 2.13 Module Settings — Sidebar Feature Toggles (COMPLETE)
+
+- ✅ Module Settings page at `/school/settings/modules` (master switch per module + per-subtab switches)
+- ✅ `schools.disabled_modules` JSONB storage (missing key = enabled; migration `0027`)
+- ✅ Canonical module registry in `lib/modules.ts` shared by settings UI, sidebar, and guards
+- ✅ Sidebar hides disabled modules/subtabs automatically (via school context — no extra fetch)
+- ✅ Server-side deep-link blocking (`requireModule`) on all module pages + sub-feature routes, with "Module unavailable" dashboard toast on redirect
+- ⏳ API-route-level module gating (deferred until Phase 4 RBAC)
+
 ---
 
 ## Phase 3 — Billing & Scale

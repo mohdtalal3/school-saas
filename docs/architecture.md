@@ -134,6 +134,17 @@ Two distinct PDF generation approaches are used:
 - **Why react-pdf:** Better for multi-page, text-heavy documents with automatic pagination
 - `next.config.js` has `transpilePackages: ["@react-pdf/renderer"]`
 
+## Module Visibility (Feature Toggles)
+
+Admins can enable/disable any sidebar module and its subtabs from Module Settings (`/school/settings/modules`).
+
+- **Registry:** `lib/modules.ts` — `MODULES` is the canonical list of toggleable modules (Employees, Students, Classes, Subjects, Timetable, Fees, `attendance.students`, `attendance.employees`) with each module's subtabs (key, label, URL param). Shared by the settings form, sidebar, and server guards. Dashboard and General Settings are intentionally not toggleable.
+- **Storage:** `schools.disabled_modules` — JSONB string array of disabled keys. **Missing key = enabled**, so no seeding is required and existing schools keep everything on. Migration `0027_module_settings.sql`. Hierarchical keys: a parent key (e.g. `attendance.students`) disables the whole module; a child key (e.g. `attendance.students.daily`) disables one subtab.
+- **Read/write:** `settings.service.ts` (`getModuleSettings` / `updateModuleSettings`) + `GET/PATCH /api/settings/modules/[schoolId]` (Zod-validates every key against the registry). Because the array lives on `schools`, it flows to the client through the existing `["school", schoolId]` TanStack query and the `AdminShell` context — no extra fetch in the sidebar.
+- **Sidebar:** `admin-sidebar.tsx` reads `school.disabled_modules` from `useAdminShell()`, hides disabled groups and filters sub-items via `enabledTabParams` / `isModuleDisabled`. A group also hides when its parent is enabled but every subtab is disabled.
+- **Deep-link blocking:** `lib/module-access.ts` → `requireModule(schoolId, moduleKey, { tabParam })` is called in every module `page.tsx` (and sub-feature routes: employee ID cards, offer letter, admission letter, fee invoice PDF viewer). It resolves the active tab from the `?tab=` / `?view=` search param (defaulting to the module's first tab) and redirects to `/school?moduleDisabled=1`, where the dashboard shows a "Module unavailable" toast. A disabled parent blocks all subtabs regardless of child state.
+- **Known limitation:** API routes are not yet module-gated; enforcement is at page/sidebar level (all current users are admins of their own tenant). Route-level gating should be added alongside Phase 4 RBAC.
+
 ## Multi-Tenant Model
 
 Single database, shared schema, **school_id** discriminator everywhere.

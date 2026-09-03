@@ -13,6 +13,7 @@ export interface School {
   timezone: string;
   employee_rules: string | null;
   student_rules: string | null;
+  disabled_modules: string[];
   created_at: string;
   updated_at: string;
 }

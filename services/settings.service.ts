@@ -58,3 +58,18 @@ export async function updateAccountSettings(
 ): Promise<School> {
   return updateSchool(schoolId, payload);
 }
+
+// ── Module Settings ──────────────────────────────────────────────────────────
+
+export async function getModuleSettings(schoolId: string): Promise<string[]> {
+  const school = await getSchoolById(schoolId);
+  return school.disabled_modules ?? [];
+}
+
+export async function updateModuleSettings(
+  schoolId: string,
+  disabledModules: string[]
+): Promise<string[]> {
+  const school = await updateSchool(schoolId, { disabled_modules: disabledModules });
+  return school.disabled_modules ?? [];
+}

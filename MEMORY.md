@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-Phase 2 is in progress. Employee management, classes, students, fees, subject management, timetable management, student attendance, scoped calendars, and employee attendance are implemented. Sections, dedicated Teacher/Parent CRUD, and exams remain pending.
+Phase 2 is in progress. Employee management, classes, students, fees, subject management, timetable management, student attendance, scoped calendars, employee attendance, and module visibility settings are implemented. Sections, dedicated Teacher/Parent CRUD, and exams remain pending.
 
 ## Established student attendance decisions
 
@@ -36,6 +36,17 @@ Phase 2 is in progress. Employee management, classes, students, fees, subject ma
 - Employee Calendar is where admins create named single-day or long-range no-attendance rules. It now mirrors the student calendar style with compact closure cards/default weekly-off cells and does not show written per-cell status counts. Settings remains responsible for timing and working-schedule configuration.
 - The current schema lacks an employment end-date/history table, so inactive-employee reports can be filtered but cannot reconstruct the exact historical deactivation date.
 
+## Established module settings decisions
+
+- Module visibility lives in `schools.disabled_modules` (JSONB string array, migration `0027`). A missing key means enabled, so no seeding is needed and existing schools keep all features on.
+- `lib/modules.ts` is the canonical registry of toggleable modules and subtabs (key, label, URL param). It is shared by the settings form, sidebar filtering, and server guards — new sidebar modules must be registered there.
+- Keys are hierarchical: a parent key (e.g. `attendance.students`) disables the whole module; a child key (e.g. `attendance.students.daily`) disables one subtab. A disabled parent blocks every child regardless of child state.
+- Dashboard and General Settings are not toggleable so an admin can never lock themselves out of re-enabling features.
+- Enforcement is two-level: the sidebar hides disabled groups/sub-items (via `school.disabled_modules` from the AdminShell context — no extra fetch), and every module `page.tsx` (plus sub-feature routes: employee ID cards, offer letter, admission letter, fee invoice PDF viewer) calls `requireModule`, which redirects deep links to `/school?moduleDisabled=1`; the dashboard shows a "Module unavailable" toast for that flag.
+- A sidebar group also hides when its parent is enabled but every subtab is disabled.
+- `PATCH /api/settings/modules/[schoolId]` Zod-validates every submitted key against the registry, so unknown keys are rejected.
+- API routes are not yet module-gated (page/sidebar level only); add route-level gating together with Phase 4 RBAC.
+
 ## Established subject and timetable decisions
 
 - Subjects are a school-wide catalog; class assignments live in `class_subjects` and carry positive integer `total_marks` values such as 50, 75, or 100.
@@ -54,4 +65,4 @@ Phase 2 is in progress. Employee management, classes, students, fees, subject ma
 
 ## Operational note
 
-Migrations `0019_subjects_and_timetable.sql` through `0026_remove_employee_department.sql` must be applied with `npm run db:migrate` before using scheduling and attendance. Migration `0024` backfills class-day statuses; migration `0025` adds employee attendance schedules/records, imports, mappings, audit history, RLS, and the transactional import RPC; migration `0026` removes the unused employee department field.
+Migrations `0019_subjects_and_timetable.sql` through `0027_module_settings.sql` must be applied with `npm run db:migrate` before using scheduling, attendance, and module settings. Migration `0024` backfills class-day statuses; migration `0025` adds employee attendance schedules/records, imports, mappings, audit history, RLS, and the transactional import RPC; migration `0026` removes the unused employee department field; migration `0027` adds the `disabled_modules` sidebar feature-toggle column on `schools`.

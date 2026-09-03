@@ -14,9 +14,22 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAdminShell } from "@/components/layout/admin-shell";
+import { useToast } from "@/components/ui/toast";
 
-export function AdminDashboard() {
+export function AdminDashboard({ moduleDisabled = false }: { moduleDisabled?: boolean }) {
   const { school } = useAdminShell();
+  const { toast } = useToast();
+
+  React.useEffect(() => {
+    if (moduleDisabled) {
+      toast({
+        title: "Module unavailable",
+        description: "This feature was disabled in Module Settings.",
+        variant: "destructive",
+      });
+    }
+  }, [moduleDisabled, toast]);
+
   const firstName = school?.name?.split(" ")[0] ?? "Your School";
 
   const stats = [
