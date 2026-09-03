@@ -358,13 +358,11 @@ These tables are **not yet created** but the foreign key relationships and namin
 
 | Table | FKs | Purpose |
 | --- | --- | --- |
-| `teachers` | `school_id`, `user_id` | Teacher records |
+| `teachers` | `school_id`, `user_id` | Dedicated teacher records, if separated from employees later |
 | `parents` | `school_id`, `user_id` | Parent/guardian records |
 | `sections` | `school_id`, `class_id` | Class sections |
 | `exams` | `school_id`, `class_id` | Exam definitions |
 | `grades` | `school_id`, `exam_id`, `student_id` | Exam results |
-| `invoices` | `school_id`, `student_id` | Fee invoices |
-| `payments` | `school_id`, `invoice_id` | Payment records |
 | `subscriptions` | `school_id`, `plan_id` | Subscription per school |
 | `plans` | — (global) | Subscription plan definitions |
 
