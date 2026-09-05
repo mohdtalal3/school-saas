@@ -342,6 +342,16 @@ CREATE TABLE student_attendance (
 
 School/class events block the entire applicable register. Student events exempt only those students while attendance remains available to their classmates. All applicable events are excluded from report calculations. Migrations: `0022_attendance_holidays.sql` and `0023_scoped_attendance_calendar.sql`.
 
+### Accounts / Finance tables
+
+- `account_categories`: Chart of Accounts — income/expense categories per school. Names are unique within their type via a unique index on `(school_id, type, lower(name))`. Deletion is usage-aware: categories referenced by transactions are deactivated (`is_active = false`), unused ones are hard-deleted, so historical transactions always resolve their category.
+- `financial_transactions`: unified income + expense ledger. `type` is `income` or `expense`; `transaction_number` is auto-generated `INC-YYYY-NNNN` / `EXP-YYYY-NNNN` per school per year (unique per school); `amount` has a `> 0` CHECK; `status` is `active` or `void` (soft delete — records are voided, never destroyed); `party_name` is the payer (income) or vendor (expense); `source` is `manual` or `fee_collection` (system-generated daily fee income row, not manually editable); `created_by_name` is denormalized for display without JOINs.
+- `financial_transaction_attachments`: multiple supporting documents per transaction (file name, storage key, mime type, size, uploader). Stored in the **private** `financial-attachments` bucket; the download API streams the file inline after session + tenant verification, so financial documents are never public and no signed URL reaches the client.
+- `financial_audit_log`: action-level audit trail (`created`, `updated`, `voided`, `attachment_added`, `attachment_removed`) with field name, previous/new values, actor, and timestamp.
+- `financial_statement_summary(p_school_id, ...)`: SQL function computing total income, total expenses, and transaction count using the exact same filters as the statement query — totals are always database-aggregated, never trusted from the frontend.
+
+All four tables are scoped by `school_id`, have RLS enabled, and are covered by migration `0028_accounts.sql`. The recurring income (Daily Addition) tables were removed by migration `0029_drop_recurring.sql` at the user's request. Migration `0030_fee_income_sync.sql` added the `source` column: every fee payment create/delete re-aggregates that day's `fee_payments` total into one system-managed income transaction (`FEE-YYYYMMDD`, category "Fee Collection"), so the Statement includes fee income without one row per payment.
+
 ### Employee attendance tables
 
 - `employee_attendance_settings`: one configurable default timing/threshold row per school.
@@ -442,7 +452,10 @@ supabase/
     ├── 0024_class_weekday_status.sql         ✅ Applied — per-class Working/Weekend status and compatibility backfill
     ├── 0025_employee_attendance.sql          ✅ Applied — employee schedules, attendance, imports, mappings, audit, RLS, and import RPC
     ├── 0026_remove_employee_department.sql   ✅ Applied — removes unused department field; employee role is the designation
-    └── 0027_module_settings.sql              ✅ Applied — disabled_modules JSONB array on schools (sidebar feature toggles)
+    ├── 0027_module_settings.sql              ✅ Applied — disabled_modules JSONB array on schools (sidebar feature toggles)
+    ├── 0028_accounts.sql                     ✅ Applied — account categories, unified financial transactions, attachments, audit log, private storage bucket, statement summary function
+    ├── 0029_drop_recurring.sql               ✅ Applied — drops the removed Daily Addition recurring table and column
+    └── 0030_fee_income_sync.sql              ✅ Applied — source column on financial_transactions + fee payments date index (daily fee income sync)
 ```
 
 Run: `npm run db:migrate`
@@ -476,13 +489,24 @@ CREATE INDEX idx_employee_import_jobs_school_created ON employee_attendance_impo
 CREATE INDEX idx_employee_attendance_audit_record ON employee_attendance_audit(school_id, employee_id, attendance_date, changed_at DESC);
 CREATE INDEX idx_fee_particulars_school_id ON fee_particulars(school_id);
 CREATE INDEX idx_fee_particulars_sort_order ON fee_particulars(school_id, sort_order);
-CREATE INDEX idx_fee_invoices_school_id ON fee_invoices(school_id);
+CREATE INDEX idx_fee_payments_school_id ON fee_payments(school_id);
+CREATE INDEX idx_fee_payments_school_payment_date ON fee_payments(school_id, payment_date);
 CREATE INDEX idx_fee_invoices_student_id ON fee_invoices(student_id);
 CREATE INDEX idx_fee_invoices_class_id ON fee_invoices(class_id);
 CREATE INDEX idx_fee_invoices_invoice_no ON fee_invoices(invoice_no);
 CREATE INDEX idx_fee_invoices_fee_month ON fee_invoices(school_id, fee_month);
 CREATE INDEX idx_fee_invoices_status ON fee_invoices(school_id, status);
 CREATE INDEX idx_fee_invoices_father_nic ON fee_invoices(school_id, father_nic);
+CREATE INDEX idx_account_categories_school_id ON account_categories(school_id, type, is_active);
+CREATE UNIQUE INDEX idx_account_categories_unique_name ON account_categories(school_id, type, lower(name));
+CREATE INDEX idx_financial_tx_school_date ON financial_transactions(school_id, transaction_date DESC);
+CREATE INDEX idx_financial_tx_school_type ON financial_transactions(school_id, type);
+CREATE INDEX idx_financial_tx_school_category ON financial_transactions(school_id, category_id);
+CREATE INDEX idx_financial_tx_school_status ON financial_transactions(school_id, status);
+CREATE INDEX idx_financial_tx_school_method ON financial_transactions(school_id, payment_method);
+CREATE INDEX idx_financial_tx_school_created_by ON financial_transactions(school_id, created_by);
+CREATE INDEX idx_financial_tx_attachments_transaction ON financial_transaction_attachments(transaction_id);
+CREATE INDEX idx_financial_audit_tx ON financial_audit_log(school_id, transaction_id, created_at DESC);
 ```
 
 ---

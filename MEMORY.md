@@ -2,7 +2,22 @@
 
 ## Current milestone
 
-Phase 2 is in progress. Employee management, classes, students, fees, subject management, timetable management, student attendance, scoped calendars, employee attendance, and module visibility settings are implemented. Sections, dedicated Teacher/Parent CRUD, and exams remain pending.
+Phase 2 is in progress. Employee management, classes, students, fees, subject management, timetable management, student attendance, scoped calendars, employee attendance, module visibility settings, and the Accounts/Finance module are implemented. Sections, dedicated Teacher/Parent CRUD, and exams remain pending.
+
+## Established accounts / finance decisions
+
+- The Accounts module uses a **unified** `financial_transactions` table with a `type` discriminator (`income` / `expense`) — no duplicated income/expense logic, and statement queries aggregate over one table.
+- Categories (`account_categories`) are unique per `(school_id, type, lower(name))`. An income category can never be attached to an expense transaction and vice versa — enforced in the service layer, and the transaction form only lists categories matching the transaction type.
+- Deletion is soft everywhere: transactions are `void`ed (never hard-deleted), and category deletion deactivates any category referenced by transactions so historical records always resolve their category. Unused categories are hard-deleted.
+- Transaction numbers are `INC-YYYY-NNNN` / `EXP-YYYY-NNNN`, generated per school per year with the same count-based pattern as employee codes, and unique per school via constraint.
+- Statement summary totals (total income, total expenses, net balance, transaction count) are computed by the `financial_statement_summary` Postgres function using the exact same filters as the paginated query — totals are never trusted from the frontend.
+- The Statement date-range filter defaults to today on both ends, so the default view shows today's transactions.
+- Financial attachments live in the **private** `financial-attachments` bucket (unlike public logo/photo buckets). The download API **streams the file inline** with the stored MIME type after session + tenant verification — images and PDFs render directly in the browser, and no signed URL is ever exposed to the client.
+- `financial_audit_log` records `created`, `updated` (per-field with previous/new values), `voided`, `attachment_added`, and `attachment_removed` events with actor name and timestamp.
+- The module is registered in `lib/modules.ts` (key `accounts`, tabs chart/income/expense/statement), rendered by the sidebar, and guarded by `requireModule` in `app/(admin)/school/accounts/page.tsx`.
+- Payment methods come from the shared `PAYMENT_METHODS` constant in `lib/accounts.ts` — never hardcoded per screen.
+- The recurring Daily Addition feature was built and then removed at the user's request: migration `0029_drop_recurring.sql` dropped `recurring_income_rules` and the `recurring_rule_id` column, and all UI/API/service/types were deleted. Do not reintroduce it without a new request.
+- Fee income is **auto-synced into the Statement**: every fee payment (collect, delete, annual due) triggers `syncFeeIncomeForDate` (`services/fee-income-sync.service.ts`), which recomputes that day's total from `fee_payments` and upserts ONE system-managed income row per day (`FEE-YYYYMMDD`, `source = 'fee_collection'`, category "Fee Collection" — auto-created and protected from deletion). The row cannot be edited/voided manually; it voids itself if a day's payments drop to zero. No backfill — sync starts from deployment day onward. Per-payment detail lives in Fees → Daily Collection; end-of-day handover = printed Statement (totals) + printed Daily Collection (detail).
 
 ## Established student attendance decisions
 
@@ -65,4 +80,4 @@ Phase 2 is in progress. Employee management, classes, students, fees, subject ma
 
 ## Operational note
 
-Migrations `0019_subjects_and_timetable.sql` through `0027_module_settings.sql` must be applied with `npm run db:migrate` before using scheduling, attendance, and module settings. Migration `0024` backfills class-day statuses; migration `0025` adds employee attendance schedules/records, imports, mappings, audit history, RLS, and the transactional import RPC; migration `0026` removes the unused employee department field; migration `0027` adds the `disabled_modules` sidebar feature-toggle column on `schools`.
+Migrations `0019_subjects_and_timetable.sql` through `0029_drop_recurring.sql` must be applied with `npm run db:migrate` before using scheduling, attendance, module settings, and accounts. Migration `0024` backfills class-day statuses; migration `0025` adds employee attendance schedules/records, imports, mappings, audit history, RLS, and the transactional import RPC; migration `0026` removes the unused employee department field; migration `0027` adds the `disabled_modules` sidebar feature-toggle column on `schools`; migration `0028` adds the Accounts/Finance tables, indexes, RLS, the private `financial-attachments` bucket, and the `financial_statement_summary` function (0027 was made idempotent so the runner can re-apply it); migration `0029` drops the removed Daily Addition recurring tables/columns.

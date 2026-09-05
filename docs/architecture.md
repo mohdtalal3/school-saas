@@ -138,7 +138,7 @@ Two distinct PDF generation approaches are used:
 
 Admins can enable/disable any sidebar module and its subtabs from Module Settings (`/school/settings/modules`).
 
-- **Registry:** `lib/modules.ts` — `MODULES` is the canonical list of toggleable modules (Employees, Students, Classes, Subjects, Timetable, Fees, `attendance.students`, `attendance.employees`) with each module's subtabs (key, label, URL param). Shared by the settings form, sidebar, and server guards. Dashboard and General Settings are intentionally not toggleable.
+- **Registry:** `lib/modules.ts` — `MODULES` is the canonical list of toggleable modules (Employees, Students, Classes, Subjects, Timetable, Fees, Accounts, `attendance.students`, `attendance.employees`) with each module's subtabs (key, label, URL param). Shared by the settings form, sidebar, and server guards. Dashboard and General Settings are intentionally not toggleable.
 - **Storage:** `schools.disabled_modules` — JSONB string array of disabled keys. **Missing key = enabled**, so no seeding is required and existing schools keep everything on. Migration `0027_module_settings.sql`. Hierarchical keys: a parent key (e.g. `attendance.students`) disables the whole module; a child key (e.g. `attendance.students.daily`) disables one subtab.
 - **Read/write:** `settings.service.ts` (`getModuleSettings` / `updateModuleSettings`) + `GET/PATCH /api/settings/modules/[schoolId]` (Zod-validates every key against the registry). Because the array lives on `schools`, it flows to the client through the existing `["school", schoolId]` TanStack query and the `AdminShell` context — no extra fetch in the sidebar.
 - **Sidebar:** `admin-sidebar.tsx` reads `school.disabled_modules` from `useAdminShell()`, hides disabled groups and filters sub-items via `enabledTabParams` / `isModuleDisabled`. A group also hides when its parent is enabled but every subtab is disabled.
@@ -229,6 +229,27 @@ Tabs are no longer managed by local React state. Instead:
 - Missing punches remain Not Marked until finalization. Finalization creates Absent only for active, joined employees without an existing row; filtered views do not overwrite existing records outside the loaded filter.
 - Biometric preview and commit re-parse and calculate on the server. `commit_employee_attendance_import(...)` performs the import job, conflict handling, attendance upserts, import-row persistence, and audit writes in one Postgres transaction.
 - Import undo restores replaced rows or removes newly imported rows. Later manual/import-edited audit events cause undo to preserve those records.
+
+### Key feature directories (`features/accounts/`)
+
+| File | Purpose |
+| --- | --- |
+| `accounts-management.tsx` | Accounts module shell with URL-driven Chart of Accounts, Add Income, Add Expense, and Statement views |
+| `chart-of-accounts-tab.tsx` | Income/expense category management — add, edit, deactivate/delete, search, sort, status filter |
+| `transaction-form-tab.tsx` | Shared Add Income / Add Expense form — category (type-matched, active only), positive amount, payment method, reference, payer/vendor, notes, attachments |
+| `transaction-attachment-uploader.tsx` | Reusable attachment uploader (pre-save) and attachment list with inline viewing |
+| `statement-tab.tsx` | Financial statement — summary cards, combined filters (date range defaulting to today, type, category, method, amount range, debounced search), sortable columns, server-side pagination, print / Excel / copy exports respecting filters. Print: summary box (income/expenses/net/count), income rows first then expenses with section subtotals and a net balance row, period line, Accountant + Principal signature blocks |
+| `transaction-details-dialog.tsx` | Transaction detail dialog — all fields, attachments, and field-level audit history |
+| `api.ts` | Accounts client API helpers |
+
+### Accounts Module Model
+
+- A **unified** `financial_transactions` table holds both income and expense rows (`type` discriminator) — no duplicated income/expense logic; categories enforce type matching at the service layer and via the transaction form only listing matching active categories.
+- Statement totals are computed by the `financial_statement_summary` Postgres function with the same filters as the paginated query — never calculated client-side. The statement date-range filter defaults to today.
+- Transaction numbers (`INC-YYYY-NNNN` / `EXP-YYYY-NNNN`) are generated per school per year using the same count-based pattern as employee codes.
+- Deletion is soft: transactions are `void`ed (kept for audit), and category deletion deactivates in-use categories so historical references always resolve.
+- Attachments live in the private `financial-attachments` bucket; the download API streams the file inline with its stored MIME type after session + tenant verification — images and PDFs render directly in the browser and no signed URL is exposed to the client.
+- **Fee income auto-sync**: every fee payment create/delete (`fee-payment.service.ts`) calls `syncFeeIncomeForDate` (`fee-income-sync.service.ts`), which recomputes the day's total from `fee_payments` and upserts one system-managed income row per day (`FEE-YYYYMMDD`, `source = 'fee_collection'`, auto-created protected "Fee Collection" category). The row cannot be edited or voided manually (403 in `updateTransaction`/`voidTransaction`) and voids itself if the day's payments drop to zero. Sync failures never block the fee payment — the next payment self-heals the row. End-of-day handover: print the Statement (totals) + Daily Collection (per-student detail).
 
 ### Suspense Boundaries
 
@@ -337,7 +358,8 @@ All list views and search-driven features follow the same pattern:
 | `collect-fees-tab.tsx` | Collect fees — search invoices by name/reg no/father CNIC/mobile/invoice no + month filter (defaults to current month), per-particular payment breakdown with allocation inputs, Allocate Full / Clear buttons, payment note, print invoice prompt after successful payment |
 | `invoice-search-tab.tsx` | Search invoices — debounced search by name/reg no/father CNIC/mobile, month filter, preview/download PDF per invoice or bulk, delete invoice |
 | `fee-defaulters-tab.tsx` | Fee defaulters — summary cards (total defaulters, outstanding amount), month filter (defaults to current month), class filter, status filter (Not Paid / Partial / All, defaults to Not Paid), debounced search, paginated table with invoice/student/remaining details, print list button (opens print-optimized HTML) |
-| `fee-report-tab.tsx` | Fee report — 4 summary cards (estimated, collected, remaining, collection rate), month filter (defaults to current month), CSS bar chart showing collection by class (estimated vs collected), class breakdown table with search + totals row, print report (print-optimized HTML), Excel export (xlsx-js-style) |
+| `fee-report-tab.tsx` | Fee report — summary cards, month filter, collection-by-class chart, class breakdown table, print + Excel export |
+| `daily-collection-tab.tsx` | Daily collection log — per-payment table for a date range (defaults to today) with class filter, summary cards, class subtotals, print / Excel / copy |
 
 ### Key feature directories (`features/subjects/`)
 

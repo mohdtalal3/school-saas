@@ -559,3 +559,116 @@ export interface FeePayment {
   particular_breakdown?: FeeAllocation[];
   created_at: string;
 }
+
+// ── Accounts / Finance ────────────────────────────────────────
+
+export type AccountCategoryType = "income" | "expense";
+export type FinancialTransactionType = "income" | "expense";
+export type FinancialTransactionStatus = "active" | "void";
+
+export interface AccountCategory {
+  id: string;
+  school_id: string;
+  name: string;
+  type: AccountCategoryType;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NewAccountCategory {
+  name: string;
+  type: AccountCategoryType;
+  description?: string | null;
+}
+
+export interface UpdateAccountCategory {
+  name?: string;
+  description?: string | null;
+  is_active?: boolean;
+}
+
+export interface FinancialTransaction {
+  id: string;
+  school_id: string;
+  transaction_number: string;
+  type: FinancialTransactionType;
+  category_id: string;
+  category_name: string | null;
+  transaction_date: string;
+  amount: number;
+  payment_method: string;
+  reference_number: string | null;
+  party_name: string | null;
+  description: string | null;
+  status: FinancialTransactionStatus;
+  /** manual = entered by admin; fee_collection = auto-generated daily fee income row */
+  source: "manual" | "fee_collection";
+  created_by: string | null;
+  created_by_name: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NewTransactionPayload {
+  type: FinancialTransactionType;
+  category_id: string;
+  transaction_date: string;
+  amount: number;
+  payment_method: string;
+  reference_number?: string | null;
+  party_name?: string | null;
+  description?: string | null;
+}
+
+export interface UpdateTransactionPayload {
+  category_id?: string;
+  transaction_date?: string;
+  amount?: number;
+  payment_method?: string;
+  reference_number?: string | null;
+  party_name?: string | null;
+  description?: string | null;
+}
+
+export interface TransactionAttachment {
+  id: string;
+  school_id: string;
+  transaction_id: string;
+  file_name: string;
+  storage_key: string;
+  mime_type: string;
+  size_bytes: number;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
+export interface FinancialAuditEntry {
+  id: string;
+  school_id: string;
+  transaction_id: string | null;
+  action: string;
+  field_name: string | null;
+  previous_value: string | null;
+  new_value: string | null;
+  changed_by: string | null;
+  changed_by_name: string | null;
+  created_at: string;
+}
+
+export interface StatementSummary {
+  total_income: number;
+  total_expenses: number;
+  net_balance: number;
+  transaction_count: number;
+}
+
+export interface QuickSummary {
+  today_income: number;
+  today_expenses: number;
+  month_income: number;
+  month_expenses: number;
+  net_balance: number;
+}

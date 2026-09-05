@@ -104,6 +104,20 @@ export const MODULES: ModuleDef[] = [
       { key: "fees.collect", label: "Collect Fees", param: "collect" },
       { key: "fees.defaulters", label: "Fee Defaulters", param: "defaulters" },
       { key: "fees.report", label: "Fee Report", param: "report" },
+      { key: "fees.daily", label: "Daily Collection", param: "daily" },
+    ],
+  },
+  {
+    key: "accounts",
+    label: "Accounts",
+    description: "Chart of accounts, income, expenses, and financial statements.",
+    path: "/school/accounts",
+    paramKind: "tab",
+    tabs: [
+      { key: "accounts.chart", label: "Chart of Accounts", param: "chart" },
+      { key: "accounts.income", label: "Add Income", param: "income" },
+      { key: "accounts.expense", label: "Add Expense", param: "expense" },
+      { key: "accounts.statement", label: "Statement", param: "statement" },
     ],
   },
   {

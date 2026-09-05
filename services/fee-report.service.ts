@@ -111,3 +111,104 @@ export async function getFeeReport(
 
   return { summary, classBreakdown };
 }
+
+// ── Daily Collection Log ────────────────────────────────────────────────────────
+
+export interface DailyCollectionEntry {
+  id: string;
+  payment_date: string;
+  amount: number;
+  note: string | null;
+  invoice_no: string;
+  student_name: string;
+  registration_no: string | null;
+  class_id: string | null;
+  class_name: string | null;
+  fee_month: string | null;
+}
+
+export interface DailyCollectionClassSubtotal {
+  classId: string | null;
+  className: string;
+  count: number;
+  collected: number;
+}
+
+export interface DailyCollectionData {
+  summary: {
+    totalCollected: number;
+    paymentCount: number;
+  };
+  classSubtotals: DailyCollectionClassSubtotal[];
+  data: DailyCollectionEntry[];
+}
+
+export async function getDailyCollection(
+  schoolId: string,
+  dateFrom: string,
+  dateTo: string,
+  classId?: string
+): Promise<DailyCollectionData> {
+  const supabase: SupabaseClient = createSupabaseService();
+
+  const { data, error } = await supabase
+    .from("fee_payments")
+    .select(
+      "id, amount, payment_date, note, invoice:fee_invoices(invoice_no, student_name, registration_no, class_id, class_name, fee_month)"
+    )
+    .eq("school_id", schoolId)
+    .gte("payment_date", `${dateFrom}T00:00:00`)
+    .lte("payment_date", `${dateTo}T23:59:59.999999`)
+    .order("payment_date", { ascending: true });
+
+  if (error) throw new Error(`Failed to fetch daily collection: ${error.message}`);
+
+  const entries: DailyCollectionEntry[] = [];
+  for (const row of (data ?? []) as Record<string, unknown>[]) {
+    const invoice = row.invoice as Record<string, unknown> | null;
+    if (!invoice) continue;
+    const entry: DailyCollectionEntry = {
+      id: row.id as string,
+      payment_date: row.payment_date as string,
+      amount: Number(row.amount ?? 0),
+      note: (row.note as string) ?? null,
+      invoice_no: (invoice.invoice_no as string) ?? "",
+      student_name: (invoice.student_name as string) ?? "",
+      registration_no: (invoice.registration_no as string) ?? null,
+      class_id: (invoice.class_id as string) ?? null,
+      class_name: (invoice.class_name as string) ?? null,
+      fee_month: (invoice.fee_month as string) ?? null,
+    };
+    if (classId && entry.class_id !== classId) continue;
+    entries.push(entry);
+  }
+
+  const subtotalMap = new Map<string, DailyCollectionClassSubtotal>();
+  let totalCollected = 0;
+  for (const entry of entries) {
+    totalCollected += entry.amount;
+    const key = entry.class_id ?? "none";
+    if (!subtotalMap.has(key)) {
+      subtotalMap.set(key, {
+        classId: entry.class_id,
+        className: entry.class_name ?? "No class",
+        count: 0,
+        collected: 0,
+      });
+    }
+    const subtotal = subtotalMap.get(key)!;
+    subtotal.count += 1;
+    subtotal.collected += entry.amount;
+  }
+
+  return {
+    summary: {
+      totalCollected: Math.round(totalCollected),
+      paymentCount: entries.length,
+    },
+    classSubtotals: Array.from(subtotalMap.values()).sort(
+      (a, b) => b.collected - a.collected
+    ),
+    data: entries,
+  };
+}

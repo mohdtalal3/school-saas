@@ -7,6 +7,7 @@ import type {
   FeePayment,
 } from "@/types/school.types";
 import { NotFoundError } from "@/lib/api-response";
+import { syncFeeIncomeForDate } from "@/services/fee-income-sync.service";
 
 // ── Collect fee (record payment with per-particular allocations) ──────────────
 
@@ -106,6 +107,9 @@ export async function collectFee(
     .single();
 
   if (payError) throw new Error(`Failed to record payment: ${payError.message}`);
+
+  // 5b. Sync the day's fee income into the Accounts Statement (single daily row)
+  await syncFeeIncomeForDate(schoolId, new Date().toISOString().slice(0, 10));
 
   // 6. Handle previous balance: reduce by amount paid toward PREVIOUS BALANCE particular,
   //     then add unpaid non-carried charges (tuition, etc.) as new previous balance
@@ -214,6 +218,7 @@ export async function deletePayment(
   const payment = paymentData as Record<string, unknown>;
   const invoiceId = payment.invoice_id as string;
   const studentId = payment.student_id as string;
+  const paymentDate = payment.payment_date as string;
 
   // Parse the payment's particular_breakdown (what was allocated in this payment)
   const breakdownRaw = payment.particular_breakdown;
@@ -353,6 +358,9 @@ export async function deletePayment(
     .eq("school_id", schoolId);
 
   if (deleteError) throw new Error(`Failed to delete payment: ${deleteError.message}`);
+
+  // 7. Re-sync the day's fee income row (amount drops; voids if the day is now empty)
+  await syncFeeIncomeForDate(schoolId, paymentDate.slice(0, 10));
 }
 
 // ── Pay Annual Due (updates student balance + latest invoice) ─────────────────
@@ -442,6 +450,9 @@ export async function payAnnualDue(
         note: "Annual due payment",
         particular_breakdown: JSON.stringify(breakdown),
       });
+
+    // Sync the day's fee income into the Accounts Statement
+    await syncFeeIncomeForDate(schoolId, new Date().toISOString().slice(0, 10));
   }
 
   return { student_id: studentId, previous_annual_due: newAnnualDue };
