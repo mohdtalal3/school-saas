@@ -5,6 +5,7 @@ ALTER TABLE schools
 
 -- Guard against malformed values: must be a JSON array.
 -- (Key-level validation against lib/modules.ts is enforced in the API route.)
+ALTER TABLE schools DROP CONSTRAINT IF EXISTS schools_disabled_modules_is_text_array;
 ALTER TABLE schools
   ADD CONSTRAINT schools_disabled_modules_is_text_array
   CHECK (jsonb_typeof(disabled_modules) = 'array');

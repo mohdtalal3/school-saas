@@ -39,6 +39,10 @@ import {
   TableProperties,
   UserRoundSearch,
   Blocks,
+  ListTree,
+  TrendingUp,
+  TrendingDown,
+  ReceiptText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -87,6 +91,14 @@ const feeSubItems: SidebarSubItem[] = [
   { label: "Collect Fees", icon: HandCoins, tab: "collect" },
   { label: "Fee Defaulters", icon: AlertTriangle, tab: "defaulters" },
   { label: "Fee Report", icon: BarChart3, tab: "report" },
+  { label: "Daily Collection", icon: ReceiptText, tab: "daily" },
+];
+
+const accountsSubItems: SidebarSubItem[] = [
+  { label: "Chart of Accounts", icon: ListTree, tab: "chart" },
+  { label: "Add Income", icon: TrendingUp, tab: "income" },
+  { label: "Add Expense", icon: TrendingDown, tab: "expense" },
+  { label: "Statement", icon: ScrollText, tab: "statement" },
 ];
 
 const employeeSubItems: SidebarSubItem[] = [
@@ -154,6 +166,7 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
   const employeeTabParams = enabledTabParams(disabledModules, "employees");
   const studentTabParams = enabledTabParams(disabledModules, "students");
   const feeTabParams = enabledTabParams(disabledModules, "fees");
+  const accountsTabParams = enabledTabParams(disabledModules, "accounts");
   const subjectTabParams = enabledTabParams(disabledModules, "subjects");
   const timetableTabParams = enabledTabParams(disabledModules, "timetable");
   const studentAttendanceTabParams = enabledTabParams(disabledModules, "attendance.students");
@@ -162,6 +175,7 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
   const visibleEmployeeSubItems = employeeSubItems.filter((i) => employeeTabParams.has(i.tab));
   const visibleStudentSubItems = studentSubItems.filter((i) => studentTabParams.has(i.tab));
   const visibleFeeSubItems = feeSubItems.filter((i) => feeTabParams.has(i.tab));
+  const visibleAccountsSubItems = accountsSubItems.filter((i) => accountsTabParams.has(i.tab));
   const visibleSubjectSubItems = subjectSubItems.filter((i) => subjectTabParams.has(i.tab));
   const visibleTimetableSubItems = timetableSubItems.filter((i) => timetableTabParams.has(i.tab));
   const visibleStudentAttendanceItems = studentAttendanceItems.filter((i) => studentAttendanceTabParams.has(i.tab));
@@ -173,6 +187,7 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
   const showSubjects = !isModuleDisabled(disabledModules, "subjects") && visibleSubjectSubItems.length > 0;
   const showTimetable = !isModuleDisabled(disabledModules, "timetable") && visibleTimetableSubItems.length > 0;
   const showFees = !isModuleDisabled(disabledModules, "fees") && visibleFeeSubItems.length > 0;
+  const showAccounts = !isModuleDisabled(disabledModules, "accounts") && visibleAccountsSubItems.length > 0;
   const showStudentAttendance = !isModuleDisabled(disabledModules, "attendance.students") && visibleStudentAttendanceItems.length > 0;
   const showEmployeeAttendance = !isModuleDisabled(disabledModules, "attendance.employees") && visibleEmployeeAttendanceItems.length > 0;
 
@@ -190,6 +205,9 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
   const [feesOpen, setFeesOpen] = React.useState(
     pathname?.startsWith("/school/fees") ?? false
   );
+  const [accountsOpen, setAccountsOpen] = React.useState(
+    pathname?.startsWith("/school/accounts") ?? false
+  );
   const [subjectsOpen, setSubjectsOpen] = React.useState(pathname?.startsWith("/school/subjects") ?? false);
   const [timetableOpen, setTimetableOpen] = React.useState(pathname?.startsWith("/school/timetable") ?? false);
   const attendanceRoute = pathname?.startsWith("/school/attendance") ?? false;
@@ -202,6 +220,7 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
     if (pathname?.startsWith("/school/students")) setStudentsOpen(true);
     if (pathname?.startsWith("/school/employees")) setEmployeesOpen(true);
     if (pathname?.startsWith("/school/fees")) setFeesOpen(true);
+    if (pathname?.startsWith("/school/accounts")) setAccountsOpen(true);
     if (pathname?.startsWith("/school/subjects")) setSubjectsOpen(true);
     if (pathname?.startsWith("/school/timetable")) setTimetableOpen(true);
     if (pathname?.startsWith("/school/attendance")) {
@@ -215,6 +234,7 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
   const classesActive = pathname?.startsWith("/school/classes") ?? false;
   const studentsActive = pathname?.startsWith("/school/students") ?? false;
   const feesActive = pathname?.startsWith("/school/fees") ?? false;
+  const accountsActive = pathname?.startsWith("/school/accounts") ?? false;
   const subjectsActive = pathname?.startsWith("/school/subjects") ?? false;
   const timetableActive = pathname?.startsWith("/school/timetable") ?? false;
   const attendanceActive = pathname?.startsWith("/school/attendance") ?? false;
@@ -503,6 +523,8 @@ export function AdminSidebar({ open, onClose, schoolName, onLogout }: AdminSideb
               </motion.div>
             )}
           </AnimatePresence></>)}
+
+          {showAccounts && <SidebarTabGroup label="Accounts" icon={Wallet} open={accountsOpen} setOpen={setAccountsOpen} active={accountsActive} currentTab={currentTab} defaultTab="chart" href="/school/accounts" items={visibleAccountsSubItems} onClose={onClose} />}
 
           <button
             type="button"

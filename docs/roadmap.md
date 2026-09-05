@@ -165,6 +165,7 @@
 - ✅ Invoice PDF — 3 invoices per A4 page (stacked vertically), particulars table with Charged/Paid/Remaining columns, Total Payable row, payment summary (Paid in this receipt, Remaining Balance), status badge, footer with month/due date/late fine
 - ✅ Fee Defaulters — list students with unpaid/partial invoices; summary cards (total defaulters, outstanding amount); month filter (defaults to current month), class filter, **status filter** (Not Paid / Partial / All Status, defaults to Not Paid), debounced search (name, reg no, father CNIC, mobile, invoice no); paginated table with invoice/student/remaining details; print list button (opens print-optimized HTML in new tab); API at `GET /api/fees/[schoolId]/defaulters?statusFilter=unpaid|partial`
 - ✅ Fee Report — 4 summary cards (total estimated after discount, total collected, total remaining, collection rate); month filter (defaults to current month); CSS bar chart showing collection by class (estimated vs collected overlay); class breakdown table (Class, Students, Estimated, Collected, Remaining, Collection Rate) with search + totals footer row; print report (print-optimized HTML in new tab); Excel export (xlsx-js-style with styled headers + totals row); API at `GET /api/fees/[schoolId]/report?feeMonth=YYYY-MM`
+- ✅ Daily Collection — per-transaction fee payment log for a date range (defaults to today) with class filter: time, student, class, reg no, invoice no, fee month, note, amount; summary cards (total collected, payment count); class subtotals; print / Excel / copy respecting filters; API at `GET /api/fees/[schoolId]/daily-collection?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD&classId=`
 - ⏳ Fee structure per class
 - ⏳ Outstanding reports
 
@@ -176,6 +177,19 @@
 - ✅ Sidebar hides disabled modules/subtabs automatically (via school context — no extra fetch)
 - ✅ Server-side deep-link blocking (`requireModule`) on all module pages + sub-feature routes, with "Module unavailable" dashboard toast on redirect
 - ⏳ API-route-level module gating (deferred until Phase 4 RBAC)
+
+### 2.14 Accounts / Finance (COMPLETE)
+
+- ✅ Chart of Accounts — income/expense categories with add, edit, usage-aware delete (in-use categories are deactivated, unused ones removed), search, sort, and active/inactive filter; unique names per type
+- ✅ Add Income / Add Expense — shared unified transaction form: type-matched active categories, positive-amount validation, payment methods from shared config (Cash, Bank Transfer, Bank Deposit, Cheque, Card, Other), reference number, payer/vendor, description, multiple attachments
+- ✅ Statement — summary cards (total income, total expenses, net balance, transaction count) recalculated server-side from the applied filters; combined filters (date range defaulting to today, type, category, payment method, amount range, debounced search across ID/category/description/party/reference); sortable columns with direction indicators; server-side pagination; print, Excel export, and copy — all respecting active filters and including school name, report title, generated date, and summary totals. **Print layout**: summary box (income/expenses/net/count), all income rows first then all expenses with per-section subtotal rows and a final net balance row, period line, and Accountant + Principal signature blocks
+- ✅ Transaction details dialog — full record view with attachments and field-level audit history (previous → new values, actor, timestamp)
+- ✅ Audit trail — `financial_audit_log` records created/updated/voided/attachment events with previous and new values
+- ✅ Private `financial-attachments` storage bucket — the download API streams files inline with the stored MIME type after session + tenant verification (images and PDFs render directly in the browser; no signed URL is exposed)
+- ✅ Migration `0028_accounts.sql` — tables, indexes, RLS, statement summary function; `0027` made idempotent for re-runs
+- ❌ Daily Addition (recurring income) — built initially, then removed at the user's request; migration `0029_drop_recurring.sql` dropped the table and column
+
+- ✅ Fee income auto-sync — each day's fee collections appear in the Statement as ONE system-managed income row (`FEE-YYYYMMDD`, "Fee Collection" category, "Auto" badge); recomputed on every fee payment create/delete, voided if the day empties, protected from manual edit/void/delete (migration `0030`); no backfill — starts from deployment onward; end-of-day handover = printed Statement (totals) + printed Daily Collection (detail)
 
 ---
 
